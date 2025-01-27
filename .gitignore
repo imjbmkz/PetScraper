@@ -1,0 +1,15 @@
+# Environments
+env/
+.env
+
+# Data files
+data/
+
+# Logs
+logs/
+
+# pycache
+*__pycache__*
+
+# Test files
+test*
