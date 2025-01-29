@@ -5,6 +5,9 @@ from bs4 import BeautifulSoup
 from sqlalchemy import Engine
 from ._pet_products_etl import PetProductsETL
 
+BASE_URL = "https://www.zooplus.co.uk"
+CATEGORIES = ["dogs", "cats", "small_pets", "birds"]
+
 class ZooplusETL(PetProductsETL):
     
     def transform(self, source: str, soup: BeautifulSoup):
@@ -83,9 +86,33 @@ class ZooplusETL(PetProductsETL):
             return df_consolidated
         
         except Exception as e:
-            logger.error(e)
+            logger.error(f"Error scraping {self.url}: {e}")
 
-    def run(self, source: str, url: str, db_conn: Engine):
+    def get_sublinks(self, category: str, tag_name: str = "a", class_name: str = "ProductGroupCard_productGroupLink", attribute: str = "href"):
+        # Data validation on category
+        cleaned_category = category.lower()
+        if cleaned_category not in CATEGORIES:
+            raise ValueError(f"Invalid category. Value must be in {CATEGORIES}")
+
+        # Construct link
+        category_link = f"{BASE_URL}/shop/{category}"
+
+        # Parse request response 
+        soup = self.extract(category_link)
+
+        # Get all tags with matching class name
+        tags = soup.select(f'{tag_name}[class*="{class_name}"]')
+
+        # Get all links; filter out specials
+        links = [f"https://www.zooplus.co.uk{tag[attribute]}" for tag in tags]
+        links = [link for link in links if category_link in link]
+
+        df = pd.DataFrame({"url": links})
+        df.insert(0, "shop", "Zooplus")
+
+        return df
+
+    def run(self, source: str, url: str, db_conn: Engine, table_name: str):
 
         while True:
 
@@ -93,7 +120,7 @@ class ZooplusETL(PetProductsETL):
             df = self.transform(source, soup)
 
             if df is not None:
-                self.load(df, db_conn)
+                self.load(df, db_conn, table_name)
 
             # Repeate the process if there are new pages
             next_page_a = soup.find("a", attrs={"data-zta": "paginationNext"})

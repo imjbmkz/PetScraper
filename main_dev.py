@@ -31,6 +31,12 @@ utils.execute_query(engine, "TRUNCATE TABLE stg_pet_products;")
 with open("links/zooplus.txt", "r") as f:
     for line in f:
         link = line.strip()
-        ZooplusETL().run("Zooplus", link, engine)
+        ZooplusETL().run("Zooplus", link, engine, "stg_pet_products")
 
-        break
+with open("sql/insert_into_pet_products.sql") as f:
+    sql = "".join(f.readlines())
+    utils.execute_query(engine, sql)
+
+with open("sql/insert_into_pet_product_variants.sql") as f:
+    sql = "".join(f.readlines())
+    utils.execute_query(engine, sql)
