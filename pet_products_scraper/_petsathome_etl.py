@@ -64,20 +64,21 @@ class PetsAtHomeETL(PetProductsETL):
                         discounted_prices.append(None)
                         discount_percentages.append(None)
 
-                prices_listed = driver.find_elements(By.CSS_SELECTOR, "span[class*='product-price_price__']")
-                if prices_listed:
-
-                    # Get the regular price
-                    price = float(prices_listed[0].text.replace("£", ""))
-                    prices.append(price)
-                    discounted_prices.append(None)
-                    discount_percentages.append(None)
-
-                # Check if there are other variation of the classes used for price.
                 else:
-                    prices.append(None)
-                    discounted_prices.append(None)
-                    discount_percentages.append(None)
+                    prices_listed = driver.find_elements(By.CSS_SELECTOR, "span[class*='product-price_price__']")
+                    if prices_listed:
+
+                        # Get the regular price
+                        price = float(prices_listed[0].text.replace("£", ""))
+                        prices.append(price)
+                        discounted_prices.append(None)
+                        discount_percentages.append(None)
+
+                    # Check if there are other variation of the classes used for price.
+                    else:
+                        prices.append(None)
+                        discounted_prices.append(None)
+                        discount_percentages.append(None)
 
 
             # Compile the data acquired into dataframe
@@ -93,6 +94,7 @@ class PetsAtHomeETL(PetProductsETL):
             df.insert(0, "description", description)
             df.insert(0, "rating", rating)
             df.insert(0, "name", product_title)
+            df.insert(0, "shop", SHOP)
 
             return df
         
