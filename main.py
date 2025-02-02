@@ -48,14 +48,23 @@ if __name__=="__main__":
         database=MYSQL_DATABASE,
     )
 
+    task = args.task
     shop = args.shop
     client = run_etl(shop)
 
-    utils.execute_query(engine, "TRUNCATE TABLE stg_pet_products;")
-    client.run(engine, "stg_pet_products")
+    if task=="get_links":
+        utils.execute_query(engine, "TRUNCATE TABLE stg_urls;")
+        client.refresh_links(engine, "stg_urls")
 
-    sql = utils.get_sql_from_file("insert_into_pet_products.sql")
-    utils.execute_query(engine, sql)
+        sql = utils.get_sql_from_file("insert_into_urls.sql")
+        utils.execute_query(engine, sql)
 
-    sql = utils.get_sql_from_file("insert_into_pet_product_variants.sql")
-    utils.execute_query(engine, sql)
+    elif task=="scrape":
+        utils.execute_query(engine, "TRUNCATE TABLE stg_pet_products;")
+        client.run(engine, "stg_pet_products")
+
+        sql = utils.get_sql_from_file("insert_into_pet_products.sql")
+        utils.execute_query(engine, sql)
+
+        sql = utils.get_sql_from_file("insert_into_pet_product_variants.sql")
+        utils.execute_query(engine, sql)

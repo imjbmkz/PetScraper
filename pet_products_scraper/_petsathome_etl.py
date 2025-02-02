@@ -141,7 +141,7 @@ class PetsAtHomeETL(PetProductsETL):
         execute_query(db_conn, f"TRUNCATE TABLE {table_name};")
 
         for category in CATEGORIES:
-            df = self.get_links(SHOP, category)
+            df = self.get_links(category)
             self.load(df, db_conn, table_name)
 
         sql = get_sql_from_file("insert_into_urls.sql")
