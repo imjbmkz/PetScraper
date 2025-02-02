@@ -116,7 +116,7 @@ class ZooplusETL(PetProductsETL):
     def run(self, db_conn: Engine, table_name: str):
 
         sql = get_sql_from_file("select_unscraped_urls.sql")
-        sql.format(shop=SHOP)
+        sql = sql.format(shop=SHOP)
         df_urls = self.extract_from_sql(db_conn, sql)
 
         for i, row in df_urls.iterrows():
