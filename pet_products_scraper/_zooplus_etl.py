@@ -105,10 +105,10 @@ class ZooplusETL(PetProductsETL):
         tags = soup.select(f'{tag_name}[class*="{class_name}"]')
 
         # Get all links; filter out specials
-        links = [f"{BASE_URL}{tag[attribute]}" for tag in tags]
-        links = [link for link in links if category_link in link]
+        urls = [f"{BASE_URL}{tag[attribute]}" for tag in tags]
+        urls = [url for url in urls if category_link in url]
 
-        df = pd.DataFrame({"url": links})
+        df = pd.DataFrame({"url": urls})
         df.insert(0, "shop", SHOP)
 
         return df
@@ -132,6 +132,7 @@ class ZooplusETL(PetProductsETL):
 
                 if df is not None:
                     self.load(df, db_conn, table_name)
+                    df = None
 
                 else:
                     update_url_scrape_status(db_conn, pkey, "FAILED", now)

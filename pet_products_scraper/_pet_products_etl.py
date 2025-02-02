@@ -4,10 +4,22 @@ from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
 from sqlalchemy import Engine
 from loguru import logger
+import undetected_chromedriver as uc
 
 from .utils import execute_query, get_sql_from_file
 
 class PetProductsETL(ABC):
+
+    def extract_from_driver(self, url: str) -> uc.Chrome:
+
+        try:
+            driver = uc.Chrome(headless=True, use_subprocess=False)
+            driver.get(url)
+            return driver
+
+        except Exception as e:
+            logger.error(e)
+            raise e
     
     def extract_from_url(self, url: str) -> BeautifulSoup:
 
