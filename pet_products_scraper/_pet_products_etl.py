@@ -15,6 +15,7 @@ class PetProductsETL(ABC):
         try:
             driver = uc.Chrome(headless=True, use_subprocess=False)
             driver.get(url)
+            logger.info(f"Initialized web driver at {url}")
             return driver
 
         except Exception as e:
