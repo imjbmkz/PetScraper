@@ -5,13 +5,11 @@ from bs4 import BeautifulSoup
 from sqlalchemy import Engine
 from loguru import logger
 
-from .utils import execute_query
+from .utils import execute_query, get_sql_from_file
 
 class PetProductsETL(ABC):
     
-    def extract(self, url: str) -> BeautifulSoup:
-
-        self.url = url
+    def extract_from_url(self, url: str) -> BeautifulSoup:
 
         try:
             # Parse request response
@@ -26,29 +24,43 @@ class PetProductsETL(ABC):
             logger.error(e)
             raise e
 
+    def extract_from_sql(self, db_conn: Engine, sql: str) -> pd.DataFrame:
+        try:
+            return pd.read_sql(sql, db_conn)
+        
+        except Exception as e:
+            logger.error(e)
+            raise e
+
     @abstractmethod
-    def transform(self, source: str, soup: BeautifulSoup) -> pd.DataFrame:
+    def transform(self, soup: BeautifulSoup, url: str) -> pd.DataFrame:
         pass
 
-    def load(self, product_data: pd.DataFrame, db_conn: Engine, table_name: str):
+    def load(self, data: pd.DataFrame, db_conn: Engine, table_name: str):
         try:
-            n = product_data.shape[0]
-            product_data.to_sql(table_name, db_conn, if_exists="append", index=False)
-            logger.info(f"Successfully loaded {n} records to the database.")
+            n = data.shape[0]
+            data.to_sql(table_name, db_conn, if_exists="append", index=False)
+            logger.info(f"Successfully loaded {n} records to the {table_name}.")
 
         except Exception as e:
             logger.error(e)
             raise e
     
-    def run(self, source: str, url: str, db_conn: Engine, table_name: str):
-        soup = self.extract(url)
-        df = self.transform(source, soup)
+    def run(self, url: str, db_conn: Engine, table_name: str):
+        soup = self.extract_from_url(url)
+        df = self.transform(soup, url)
         self.load(df, db_conn, table_name)
 
-        with open("sql/insert_into_pet_products.sql") as f:
-            query = f.read()
-            execute_query(db_conn, query)
+        sql = get_sql_from_file("insert_into_pet_products.sql")
+        execute_query(db_conn, sql)
 
-        with open("sql/insert_into_pet_product_variants.sql") as f:
-            query = f.read()
-            execute_query(db_conn, query)
+        sql = get_sql_from_file("insert_into_pet_product_variants.sql")
+        execute_query(db_conn, sql)
+
+    @abstractmethod
+    def get_links(self) -> pd.DataFrame:
+        pass
+    
+    @abstractmethod
+    def refresh_links(self, db_conn: Engine, table_name: str):
+        pass

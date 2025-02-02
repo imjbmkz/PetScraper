@@ -1,6 +1,16 @@
+DROP TABLE IF EXISTS stg_urls;
+CREATE TABLE stg_urls (
+    inserted_date datetime DEFAULT now()
+    ,shop varchar(50) CHARACTER SET utf8mb4
+    ,url varchar(255) CHARACTER SET utf8mb4
+    ,scrape_status varchar(25) CHARACTER SET utf8mb4 DEFAULT 'NOT STARTED'
+    ,updated_date datetime
+);
+
 DROP TABLE IF EXISTS urls;
 CREATE TABLE urls (
-    inserted_date datetime DEFAULT now()
+    id int NOT NULL AUTO_INCREMENT PRIMARY KEY
+    ,inserted_date datetime DEFAULT now()
     ,shop varchar(50) CHARACTER SET utf8mb4
     ,url varchar(255) CHARACTER SET utf8mb4
     ,scrape_status varchar(25) CHARACTER SET utf8mb4 DEFAULT 'NOT STARTED'

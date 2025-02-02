@@ -9,7 +9,7 @@ INSERT INTO pet_product_variants (
 )
 SELECT DISTINCT 
     b.id
-    ,now() inserted_date
+    ,a.inserted_date
     ,a.url
     ,a.variant
     ,a.price

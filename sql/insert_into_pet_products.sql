@@ -7,7 +7,7 @@ INSERT INTO pet_products (
     ,url
 )
 SELECT DISTINCT
-	now() inserted_date
+	inserted_date
     ,shop
     ,name 
     ,rating

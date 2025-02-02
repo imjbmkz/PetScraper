@@ -4,13 +4,15 @@ from loguru import logger
 from bs4 import BeautifulSoup
 from sqlalchemy import Engine
 from ._pet_products_etl import PetProductsETL
+from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
+SHOP = "Zooplus"
 BASE_URL = "https://www.zooplus.co.uk"
 CATEGORIES = ["dogs", "cats", "small_pets", "birds"]
 
 class ZooplusETL(PetProductsETL):
     
-    def transform(self, source: str, soup: BeautifulSoup):
+    def transform(self, soup: BeautifulSoup, url: str):
         
         # Get product wrappers. Each wrapper may have varying content.
         product_wrappers = soup.select('div[class*="ProductListItem_productWrapper"]')
@@ -80,15 +82,14 @@ class ZooplusETL(PetProductsETL):
         
         try:
             df_consolidated = pd.concat(consolidated_data, ignore_index=True)
-            df_consolidated.insert(0, "shop", source)
-            df_consolidated.insert(0, "inserted_date", datetime.now())
+            df_consolidated.insert(0, "shop", SHOP)
 
             return df_consolidated
         
         except Exception as e:
-            logger.error(f"Error scraping {self.url}: {e}")
+            logger.error(f"Error scraping {url}: {e}")
 
-    def get_sublinks(self, category: str, tag_name: str = "a", class_name: str = "ProductGroupCard_productGroupLink", attribute: str = "href"):
+    def get_links(self, category: str, tag_name: str = "a", class_name: str = "ProductGroupCard_productGroupLink", attribute: str = "href") -> pd.DataFrame:
         # Data validation on category
         cleaned_category = category.lower()
         if cleaned_category not in CATEGORIES:
@@ -98,33 +99,58 @@ class ZooplusETL(PetProductsETL):
         category_link = f"{BASE_URL}/shop/{category}"
 
         # Parse request response 
-        soup = self.extract(category_link)
+        soup = self.extract_from_url(category_link)
 
         # Get all tags with matching class name
         tags = soup.select(f'{tag_name}[class*="{class_name}"]')
 
         # Get all links; filter out specials
-        links = [f"https://www.zooplus.co.uk{tag[attribute]}" for tag in tags]
+        links = [f"{BASE_URL}{tag[attribute]}" for tag in tags]
         links = [link for link in links if category_link in link]
 
         df = pd.DataFrame({"url": links})
-        df.insert(0, "shop", "Zooplus")
+        df.insert(0, "shop", SHOP)
 
         return df
 
-    def run(self, source: str, url: str, db_conn: Engine, table_name: str):
+    def run(self, db_conn: Engine, table_name: str):
 
-        while True:
+        sql = get_sql_from_file("select_unscraped_urls.sql")
+        df_urls = self.extract_from_sql(db_conn, sql)
 
-            soup = self.extract(url)
-            df = self.transform(source, soup)
+        for i, row in df_urls.iterrows():
 
-            if df is not None:
-                self.load(df, db_conn, table_name)
+            pkey = row["id"]
+            url = row["url"]
 
-            # Repeate the process if there are new pages
-            next_page_a = soup.find("a", attrs={"data-zta": "paginationNext"})
-            if next_page_a:
-                url = next_page_a["href"]
-            else:
-                break
+            while True:
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                soup = self.extract_from_url(url)
+                df = self.transform(soup, url)
+
+                if df is not None:
+                    self.load(df, db_conn, table_name)
+
+                else:
+                    update_url_scrape_status(db_conn, pkey, "FAILED", now)
+
+                # Repeat the process if there are new pages
+                next_page_a = soup.find("a", attrs={"data-zta": "paginationNext"})
+                if next_page_a:
+                    url = next_page_a["href"]
+                else:
+                    break
+            
+            update_url_scrape_status(db_conn, pkey, "DONE", now)
+
+    def refresh_links(self, db_conn: Engine, table_name: str):
+        
+        execute_query(db_conn, f"TRUNCATE TABLE {table_name};")
+
+        for category in CATEGORIES:
+            df = self.get_links(SHOP, category)
+            self.load(df, db_conn, table_name)
+
+        sql = get_sql_from_file("insert_into_urls.sql")
+        execute_query(db_conn, sql)

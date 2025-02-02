@@ -12,7 +12,18 @@ def get_db_conn(drivername: str, username: str, password: str, host: str, port: 
     db_conn = create_engine(connection_string)
     return db_conn
 
-def execute_query(engine: Engine, query: str) -> None:
+def get_sql_from_file(file_name: str) -> str:
+    with open(f"sql/{file_name}") as f:
+        sql = f.read()
+
+    return sql
+
+def update_url_scrape_status(db_engine: Engine, pkey: int, status: str, timestamp: str):
+    sql = get_sql_from_file("update_url_scrape_status.sql")
+    sql = sql.format(status=status, timestamp=timestamp, pkey=pkey)
+    execute_query(db_engine, sql)
+
+def execute_query(engine: Engine, sql: str) -> None:
     with engine.connect() as conn:
-        conn.execute(text(query))
+        conn.execute(text(sql))
         conn.commit()

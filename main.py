@@ -1,33 +1,36 @@
-import argparse
-from pet_products_scraper import scraper
+import os, sys
+from loguru import logger
+from dotenv import load_dotenv
+from pet_products_scraper import utils
+from pet_products_scraper import ZooplusETL
 
-parser = argparse.ArgumentParser(
-    prog="Pet Products Scraper",
-    description="Scrape the Zooplus website for pet products."
+logger.remove()
+logger.add("logs/std_out.log", rotation="10 MB", level="INFO")
+logger.add("logs/std_err.log", rotation="10 MB", level="ERROR")
+logger.add(sys.stdout, level="INFO")
+logger.add(sys.stderr, level="ERROR")
+
+load_dotenv()
+MYSQL_HOST = os.getenv("MYSQL_HOST")
+MYSQL_PORT = os.getenv("MYSQL_PORT")
+MYSQL_USER = os.getenv("MYSQL_USER")
+MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
+MYSQL_DRIVER = os.getenv("MYSQL_DRIVER")
+
+engine = utils.get_db_conn(
+    drivername=MYSQL_DRIVER,
+    username=MYSQL_USER,
+    password=None,
+    host=MYSQL_HOST,
+    port=MYSQL_PORT,
+    database=MYSQL_DATABASE,
 )
 
-parser.add_argument("task", choices=["refresh", "scrape"], help="Identify the task to be executed. refresh=refresh the links; scrape=scraper products.")
-parser.add_argument("-c", "--category", nargs="?", default="all", help="Refresh the link of a category. Default: all categories.")
-args = parser.parse_args()
+utils.execute_query(engine, "TRUNCATE TABLE stg_pet_products;")
+ZooplusETL().run(engine, "stg_pet_products")
 
-if __name__=="__main__":
+sql = utils.get_sql_from_file("insert_into_pet_products.sql")
+utils.execute_query(engine, sql)
 
-    task = args.task
-    category = args.category
-    categories_to_refresh = scraper.CATEGORIES if category == "all" else [category]
-
-    print(f"{task} task has started.")
-
-    if args.task == "refresh":
-        for cat in categories_to_refresh:
-            scraper.get_sublinks(cat)
-
-    if args.task == "scrape":
-        for cat in categories_to_refresh:
-            file_path = f"links/{cat}.txt"
-            with open(file_path, "r") as file:
-                links = file.readlines()
-            for link in links:
-                scraper.get_products(link.rstrip())
-
-    print(f"{task} task has ended.")
+sql = utils.get_sql_from_file("insert_into_pet_product_variants.sql")
+utils.execute_query(engine, sql)
