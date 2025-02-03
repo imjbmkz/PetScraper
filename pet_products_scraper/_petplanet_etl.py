@@ -1,8 +1,11 @@
+import time
 import pandas as pd
 from datetime import datetime
 from loguru import logger
 from bs4 import BeautifulSoup
 from sqlalchemy import Engine
+from selenium.webdriver.common.by import By
+
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
@@ -29,18 +32,46 @@ class PetPlanetETL(PetProductsETL):
             raise ValueError(f"Invalid category. Value must be in {CATEGORIES}")
         
         path = CATEGORIES[cleaned_category]
+        url = f"{BASE_URL}{path}"
 
         urls = []
 
+        driver = self.extract_from_driver(url)
+
         while True:
+            try:
+                # Scroll to the bottom to make the button visible
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(1)
 
-            url = f"{BASE_URL}{path}" 
+                # Click the Show More button and wait for some time
+                show_more_button = driver.find_element(By.ID, "ContentPlaceHolder1_ctl00_Shop1_ProdMenu1_LoadMoreBtn1")
+                show_more_button.click()
+                time.sleep(5)
 
-            # Parse request response 
-            soup = self.extract_from_url(url)
+                # Get the available product links
+                products = driver.find_elements(By.CSS_SELECTOR, "div[class='col product-card']")
+                new_urls = [p.get_property("href") for p in products]
+                urls.extend(new_urls)
+
+            except:
+                break
+        
+        df = pd.DataFrame({"url": urls})
+        df.drop_duplicates(inplace=True)
+        df.insert(0, "shop", SHOP)
+
+        return df
 
     def run(self, db_conn: Engine, table_name: str):
         pass
 
     def refresh_links(self, db_conn: Engine, table_name: str):
-        pass
+        execute_query(db_conn, f"TRUNCATE TABLE {table_name};")
+
+        for category in CATEGORIES:
+            df = self.get_links(category)
+            self.load(df, db_conn, table_name)
+
+        sql = get_sql_from_file("insert_into_urls.sql")
+        execute_query(db_conn, sql)

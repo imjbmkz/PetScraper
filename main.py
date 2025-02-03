@@ -2,12 +2,13 @@ import os, sys, argparse
 from loguru import logger
 from dotenv import load_dotenv
 from pet_products_scraper import utils
-from pet_products_scraper import PetProductsETL, ZooplusETL, PetsAtHomeETL
+from pet_products_scraper import PetProductsETL, ZooplusETL, PetsAtHomeETL, PetPlanetETL
 
 def run_etl(shop: str) -> PetProductsETL:
     factory = {
         "Zooplus": ZooplusETL(),
         "PetsAtHome": PetsAtHomeETL(),
+        "PetPlanet":PetPlanetETL(),
     }
 
     if shop in factory:
