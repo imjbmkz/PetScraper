@@ -125,6 +125,7 @@ class ZooplusETL(PetProductsETL):
             url = row["url"]
 
             while True:
+
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 soup = self.extract_from_url(url)
@@ -132,8 +133,7 @@ class ZooplusETL(PetProductsETL):
 
                 if df is not None:
                     self.load(df, db_conn, table_name)
-                    df = None
-
+                    
                 else:
                     update_url_scrape_status(db_conn, pkey, "FAILED", now)
 
@@ -144,7 +144,11 @@ class ZooplusETL(PetProductsETL):
                 else:
                     break
             
-            update_url_scrape_status(db_conn, pkey, "DONE", now)
+            if df is not None:
+                update_url_scrape_status(db_conn, pkey, "DONE", now)
+            
+            else:
+                update_url_scrape_status(db_conn, pkey, "FAILED", now)
 
     def refresh_links(self, db_conn: Engine, table_name: str):
         

@@ -152,12 +152,12 @@ class PetsAtHomeETL(PetProductsETL):
 
             if df is not None:
                 self.load(df, db_conn, table_name)
-                df = None
+                update_url_scrape_status(db_conn, pkey, "DONE", now)
 
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
-            
-            update_url_scrape_status(db_conn, pkey, "DONE", now)
+
+            driver.close()
 
     def refresh_links(self, db_conn: Engine, table_name: str):
         
