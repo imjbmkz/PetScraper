@@ -36,27 +36,7 @@ class PetPlanetETL(PetProductsETL):
 
         urls = []
 
-        driver = self.extract_from_driver(url)
-
-        while True:
-            try:
-                # Scroll to the bottom to make the button visible
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(1)
-
-                # Click the Show More button and wait for some time
-                show_more_button = driver.find_element(By.ID, "ContentPlaceHolder1_ctl00_Shop1_ProdMenu1_LoadMoreBtn1")
-                show_more_button.click()
-                time.sleep(5)
-
-                # Get the available product links
-                products = driver.find_elements(By.CSS_SELECTOR, "div[class='col product-card']")
-                a_tags = [p.find_element(By.TAG_NAME, "a") for p in products]
-                new_urls = [a.get_property("href") for a in a_tags]
-                urls.extend(new_urls)
-
-            except:
-                break
+        
         
         df = pd.DataFrame({"url": urls})
         df.drop_duplicates(inplace=True)

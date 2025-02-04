@@ -45,9 +45,9 @@ class PetProductsETL(ABC):
         before_sleep=before_sleep_log(logger, "WARNING"),
         reraise=True,
     )
-    def extract_from_url(self, url: str) -> BeautifulSoup:
+    def extract_from_url(self, url: str, params: dict = None, headers: dict = None) -> BeautifulSoup:
         # Parse request response
-        response = self.session.get(url)
+        response = self.session.get(url=url, params=params, headers=headers)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "html.parser")
         logger.info(

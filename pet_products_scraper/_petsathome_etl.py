@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 import undetected_chromedriver as uc
 from datetime import datetime
@@ -15,91 +16,148 @@ CATEGORIES = ["dog", "cat", "small-animal", "fish", "reptile", "bird-and-wildlif
 
 class PetsAtHomeETL(PetProductsETL):
 
-    def transform(self, driver: uc.Chrome, url: str):
-
-        try:
+    def transform(self, soup: BeautifulSoup, url: str):
         
-            # Placeholder for some values
+        # Get the data from encoded JSON
+        product_data = soup.select_one("[id='__NEXT_DATA__']")
+        product_data_dict = json.loads(product_data.text)
+
+        # Get base details
+        product_title = product_data_dict["props"]["pageProps"]["baseProduct"]["name"]
+        rating = product_data_dict["props"]["pageProps"]["productRating"]
+        rating = product_data_dict["props"]["pageProps"]["productRating"]
+        if rating:
+            rating = "{} out of 5".format(rating["averageRating"])
+        else:
             rating = None
-            variants = []
-            prices = []
-            discounted_prices = []
-            discount_percentages = []
+        description = product_data_dict["props"]["pageProps"]["baseProduct"]["description"]
+        product_url = url.replace("https://www.petsathome.com", "")
 
-            # Check if ratings are available
-            ratings = driver.find_elements(By.CSS_SELECTOR, "[id*='reviews']")
-            if ratings:
-                ratings[0].click()
-                driver.implicitly_wait(5)
-                rating = driver.find_element(By.CSS_SELECTOR, "p[class*='rating-breakdown_rating']").text
+        # Placeholder for variant details
+        variants = []
+        prices = []
+        discounted_prices = []
+        discount_percentages = []
 
-            # Get basic details, such as title and description
-            product_title = driver.find_element(By.CSS_SELECTOR, "[class*='preview_title-base-product']").text
-            description = driver.find_element("css selector", "[class*='truncated-text_truncated']").find_element(By.TAG_NAME, "p").text
+        # Iterate through all product variants
+        for variant in product_data_dict["props"]["pageProps"]["baseProduct"]["products"]:
+            variants.append(variant["label"])
 
-            # Get product variants
-            product_variants = driver.find_elements(By.CSS_SELECTOR, "[class*='product-selector_pill']")
-            for variant in product_variants:
+            price = variant["price"]["base"]
+            discounted_price = variant["price"]["promotionBase"]
 
-                # Price of a variant will show up when you select the variant
-                variant.click()
-                variants.append(variant.text)
+            prices.append(price)
+            discounted_prices.append(discounted_price)
 
-                # There are two prices that could be listed: one regular price, and one easy-repeat price 
-                prices_listed = driver.find_elements(By.CSS_SELECTOR, "span[class*='purchase-type-selector_price__']")
-                if prices_listed:
+            if discounted_price:
+                discount_percentage = (price - discounted_price) / price
+            else:
+                discount_percentage = None
 
-                    # Get the regular price
-                    price = float(prices_listed[0].text.replace("£", ""))
-                    prices.append(price)
-                    
-                    # Check if easy-repeat prices are available
-                    if len(prices_listed)>1:
-                        discounted_price = float(prices_listed[1].text.replace("£", ""))
-                        discounted_prices.append(discounted_price)
-                        discount_percentage = ((price - discounted_price) / price) 
-                        discount_percentages.append(discount_percentage)
+            discount_percentages.append(discount_percentage)
 
-                    else:
-                        discounted_prices.append(None)
-                        discount_percentages.append(None)
-
-                else:
-                    prices_listed = driver.find_elements(By.CSS_SELECTOR, "span[class*='product-price_price__']")
-                    if prices_listed:
-
-                        # Get the regular price
-                        price = float(prices_listed[0].text.replace("£", ""))
-                        prices.append(price)
-                        discounted_prices.append(None)
-                        discount_percentages.append(None)
-
-                    # Check if there are other variation of the classes used for price.
-                    else:
-                        prices.append(None)
-                        discounted_prices.append(None)
-                        discount_percentages.append(None)
-
-
-            # Compile the data acquired into dataframe
-            df = pd.DataFrame(
-                {
-                    "variant": variants, 
-                    "price": prices,
-                    "discounted_price": discounted_prices,
-                    "discount_percentage": discount_percentages
-                }
-            )
-            df.insert(0, "url", url)
-            df.insert(0, "description", description)
-            df.insert(0, "rating", rating)
-            df.insert(0, "name", product_title)
-            df.insert(0, "shop", SHOP)
-
-            return df
+        # Compile the data acquired into dataframe
+        df = pd.DataFrame(
+            {
+                "variant": variants, 
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages
+            }
+        )
+        df.insert(0, "url", product_url)
+        df.insert(0, "description", description)
+        df.insert(0, "rating", rating)
+        df.insert(0, "name", product_title)
+        df.insert(0, "shop", SHOP)
         
-        except Exception as e:
-            logger.error(f"Error scraping {url}: {e}")
+        return df
+
+    # def transform(self, driver: uc.Chrome, url: str):
+
+    #     try:
+        
+    #         # Placeholder for some values
+    #         rating = None
+    #         variants = []
+    #         prices = []
+    #         discounted_prices = []
+    #         discount_percentages = []
+
+    #         # Check if ratings are available
+    #         ratings = driver.find_elements(By.CSS_SELECTOR, "[id*='reviews']")
+    #         if ratings:
+    #             ratings[0].click()
+    #             driver.implicitly_wait(5)
+    #             rating = driver.find_element(By.CSS_SELECTOR, "p[class*='rating-breakdown_rating']").text
+
+    #         # Get basic details, such as title and description
+    #         product_title = driver.find_element(By.CSS_SELECTOR, "[class*='preview_title-base-product']").text
+    #         description = driver.find_element("css selector", "[class*='truncated-text_truncated']").find_element(By.TAG_NAME, "p").text
+
+    #         # Get product variants
+    #         product_variants = driver.find_elements(By.CSS_SELECTOR, "[class*='product-selector_pill']")
+    #         for variant in product_variants:
+
+    #             # Price of a variant will show up when you select the variant
+    #             variant.click()
+    #             variants.append(variant.text)
+
+    #             # There are two prices that could be listed: one regular price, and one easy-repeat price 
+    #             prices_listed = driver.find_elements(By.CSS_SELECTOR, "span[class*='purchase-type-selector_price__']")
+    #             if prices_listed:
+
+    #                 # Get the regular price
+    #                 price = float(prices_listed[0].text.replace("£", ""))
+    #                 prices.append(price)
+                    
+    #                 # Check if easy-repeat prices are available
+    #                 if len(prices_listed)>1:
+    #                     discounted_price = float(prices_listed[1].text.replace("£", ""))
+    #                     discounted_prices.append(discounted_price)
+    #                     discount_percentage = ((price - discounted_price) / price) 
+    #                     discount_percentages.append(discount_percentage)
+
+    #                 else:
+    #                     discounted_prices.append(None)
+    #                     discount_percentages.append(None)
+
+    #             else:
+    #                 prices_listed = driver.find_elements(By.CSS_SELECTOR, "span[class*='product-price_price__']")
+    #                 if prices_listed:
+
+    #                     # Get the regular price
+    #                     price = float(prices_listed[0].text.replace("£", ""))
+    #                     prices.append(price)
+    #                     discounted_prices.append(None)
+    #                     discount_percentages.append(None)
+
+    #                 # Check if there are other variation of the classes used for price.
+    #                 else:
+    #                     prices.append(None)
+    #                     discounted_prices.append(None)
+    #                     discount_percentages.append(None)
+
+
+    #         # Compile the data acquired into dataframe
+    #         df = pd.DataFrame(
+    #             {
+    #                 "variant": variants, 
+    #                 "price": prices,
+    #                 "discounted_price": discounted_prices,
+    #                 "discount_percentage": discount_percentages
+    #             }
+    #         )
+    #         df.insert(0, "url", url)
+    #         df.insert(0, "description", description)
+    #         df.insert(0, "rating", rating)
+    #         df.insert(0, "name", product_title)
+    #         df.insert(0, "shop", SHOP)
+
+    #         return df
+        
+    #     except Exception as e:
+    #         logger.error(f"Error scraping {url}: {e}")
 
     def get_links(self, category: str) -> pd.DataFrame:
         # Data validation on category
@@ -147,8 +205,8 @@ class PetsAtHomeETL(PetProductsETL):
 
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            driver = self.extract_from_driver(url)
-            df = self.transform(driver, url)
+            soup = self.extract_from_url(url)
+            df = self.transform(soup, url)
 
             if df is not None:
                 self.load(df, db_conn, table_name)
@@ -156,8 +214,6 @@ class PetsAtHomeETL(PetProductsETL):
 
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
-
-            driver.close()
 
     def refresh_links(self, db_conn: Engine, table_name: str):
         
