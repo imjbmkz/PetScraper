@@ -65,7 +65,6 @@ Pygments==2.19.1
 PySocks==1.7.1
 python-dateutil==2.9.0.post0
 pytz==2024.2
-pywin32==308
 pyzmq==26.2.0
 requests==2.32.3
 selenium==4.28.0
@@ -124,7 +123,6 @@ Pygments==2.19.1
 PySocks==1.7.1
 python-dateutil==2.9.0.post0
 pytz==2024.2
-pywin32==308
 pyzmq==26.2.0
 requests==2.32.3
 selenium==4.28.0
@@ -149,3 +147,4 @@ win32_setctime==1.2.0
 wsproto==1.2.0
 python-dotenv==1.0.1
 pymysql==1.1.1
+tenacity==9.0.0

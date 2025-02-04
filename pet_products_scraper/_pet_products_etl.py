@@ -5,10 +5,26 @@ from bs4 import BeautifulSoup
 from sqlalchemy import Engine
 from loguru import logger
 import undetected_chromedriver as uc
+from tenacity import (
+    before_sleep_log,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_random,
+)
+import random
 
 from .utils import execute_query, get_sql_from_file
 
+MAX_RETRIES = 10
+MAX_WAIT_BETWEEN_REQ = 2
+MIN_WAIT_BETWEEN_REQ = 0
+REQUEST_TIMEOUT = 30
+
+
 class PetProductsETL(ABC):
+    def __init__(self):
+        self.session = requests.Session()
 
     def extract_from_driver(self, url: str) -> uc.Chrome:
 
@@ -22,20 +38,24 @@ class PetProductsETL(ABC):
             logger.error(e)
             raise e
     
+    @retry(
+        wait=wait_random(min=MIN_WAIT_BETWEEN_REQ, max=MAX_WAIT_BETWEEN_REQ),
+        stop=stop_after_attempt(MAX_RETRIES),
+        retry=retry_if_exception_type(requests.RequestException),
+        before_sleep=before_sleep_log(logger, "WARNING"),
+        reraise=True,
+    )
     def extract_from_url(self, url: str) -> BeautifulSoup:
-
-        try:
-            # Parse request response
-            response = requests.get(url)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.content, "html.parser")
-            logger.info(f"Successfully extracted data from {url} {response.status_code}")
-            return soup
-        
-        # Log and raise exceptions
-        except Exception as e:
-            logger.error(e)
-            raise e
+        # Parse request response
+        response = self.session.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        logger.info(
+            f"Successfully extracted data from {url} {response.status_code}"
+        )
+        sleep_time = random.uniform(MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
+        logger.info(f"Sleeping for {sleep_time} seconds...")
+        return soup
 
     def extract_from_sql(self, db_conn: Engine, sql: str) -> pd.DataFrame:
         try:
