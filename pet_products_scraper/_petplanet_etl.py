@@ -51,7 +51,8 @@ class PetPlanetETL(PetProductsETL):
 
                 # Get the available product links
                 products = driver.find_elements(By.CSS_SELECTOR, "div[class='col product-card']")
-                new_urls = [p.get_property("href") for p in products]
+                a_tags = [p.find_element(By.TAG_NAME, "a") for p in products]
+                new_urls = [a.get_property("href") for a in a_tags]
                 urls.extend(new_urls)
 
             except:

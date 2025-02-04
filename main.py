@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("task", choices=["get_links", "scrape"], help="Identify the task to be executed. get_links=get links from registered shops; scrape=scrape products.")
-parser.add_argument("-s", "--shop", choices=["Zooplus", "PetsAtHome"], help="Select a shop to scrape. Default: all shops.")
+parser.add_argument("-s", "--shop", choices=["Zooplus", "PetsAtHome", "PetPlanet"], help="Select a shop to scrape. Default: all shops.")
 args = parser.parse_args()
 
 if __name__=="__main__":
