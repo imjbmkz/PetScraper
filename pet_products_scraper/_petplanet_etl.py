@@ -1,4 +1,6 @@
+import re
 import time
+import requests
 import pandas as pd
 from datetime import datetime
 from loguru import logger
@@ -31,16 +33,83 @@ class PetPlanetETL(PetProductsETL):
         if cleaned_category not in CATEGORIES.keys():
             raise ValueError(f"Invalid category. Value must be in {CATEGORIES}")
         
+        # Construct URL
         path = CATEGORIES[cleaned_category]
         url = f"{BASE_URL}{path}"
 
+        # Request headers 
+        headers = {
+            "Referer": url,
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        }
+
+        # Initial request
+        session = requests.Session()
+        response = session.post(url, headers=headers, verify=False)
+        
+        # Get number of product items
+        num_items_pattern = r"Showing (\d+) items"
+        num_items = int(re.search(num_items_pattern, response.text).group(1))
+        
         urls = []
 
+        idx = 0
+        step = 20
+        while len(urls) < num_items:
+            soup = BeautifulSoup(response.text, "html.parser")
         
+            for product in soup.find_all(class_="product-name"):
+                urls.append(product["href"])
+        
+            _viewstate = soup.find("input", {"name": '__VIEWSTATE'})
+            _viewstate_value = _viewstate.get('value') if _viewstate else None
+        
+            _eventtarget = soup.find("input", {"name": '__EVENTTARGET'})
+            _eventtarget_value = _eventtarget.get('value') if _eventtarget else None
+        
+            _eventargument = soup.find("input", {"name": '__EVENTARGUMENT'})
+            _eventargument_value = _eventargument.get('value') if _eventargument else None
+        
+            _lastfocus = soup.find("input", {"name": '__LASTFOCUS'})
+            _lastfocus_value = _lastfocus.get('value') if _lastfocus else None
+        
+            _viewgenerator = soup.find("input", {"name": '__VIEWSTATEGENERATOR'})
+            _viewgenerator_value = _viewgenerator.get('value') if _viewgenerator else None
+        
+            _eventvalidation = soup.find("input", {"name": '__EVENTVALIDATION'})
+            _eventvalidation_value = _eventvalidation.get('value') if _eventvalidation else None
+        
+        
+            params = {
+                'ctl00$Header1$SearchBox1$search_text': '',
+                'ctl00$Header1$SearchBox1$search_text_mobile': '',
+                'ctl00$ContentPlaceHolder1$ctl00$Shop1$ProdMenu1$menu_sort_list_mobile': 'sales',
+                'ctl00$ContentPlaceHolder1$ctl00$Shop1$ProdMenu1$HiddenTextClickedFilterValue': '',
+                'ctl00$ContentPlaceHolder1$ctl00$Shop1$ProdMenu1$menu_sort_list': 'price',
+                'ctl00$ContentPlaceHolder1$ctl00$Shop1$ProdMenu1$LoadMoreFlag1': '1',
+                'ctl00$ContentPlaceHolder1$ctl00$Shop1$ProdMenu1$LoadStopFlag1': '0',
+                'ctl00$ContentPlaceHolder1$ctl00$Shop1$ProdMenu1$PageSize1': idx + step,
+                'ctl00$ContentPlaceHolder1$ctl00$Shop1$ProdMenu1$PageSizeStep1': step,
+                'ctl00$Footer1$FooterSubscribePanel$subscribeEmailTextbox': '',
+                '__EVENTTARGET': _eventtarget_value,
+                '__EVENTARGUMENT': _eventargument_value,
+                '__LASTFOCUS': _lastfocus_value,
+                '__VIEWSTATE': _viewstate_value,
+                '__VIEWSTATEGENERATOR': _viewgenerator_value,
+                '__EVENTVALIDATION': _eventvalidation_value,
+                '__ASYNCPOST': 'true',
+                'ctl00$ContentPlaceHolder1$ctl00$Shop1$ProdMenu1$LoadMoreBtn1': 'Show More',
+                'popup-ctrl-ouibounce-email': ''
+            }
+            response = session.post('https://www.petplanet.co.uk/d7/dog_food', headers=headers, data=params, verify=False)
+            idx += step
         
         df = pd.DataFrame({"url": urls})
         df.drop_duplicates(inplace=True)
         df.insert(0, "shop", SHOP)
+
+        logger.info(f"Scraped: {url}")
 
         return df
 
