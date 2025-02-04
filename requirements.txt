@@ -149,3 +149,4 @@ win32_setctime==1.2.0
 wsproto==1.2.0
 python-dotenv==1.0.1
 pymysql==1.1.1
+tenacity==9.0.0
