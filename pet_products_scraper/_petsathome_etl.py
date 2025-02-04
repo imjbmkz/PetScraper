@@ -1,23 +1,23 @@
 import json
+from datetime import datetime
+
 import pandas as pd
 import undetected_chromedriver as uc
-from datetime import datetime
-from loguru import logger
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
+from loguru import logger
 from selenium.webdriver.common.by import By
+from sqlalchemy import Engine
 
 from ._pet_products_etl import PetProductsETL
-from .utils import execute_query, update_url_scrape_status, get_sql_from_file
+from .utils import execute_query, get_sql_from_file, update_url_scrape_status
 
 SHOP = "PetsAtHome"
 BASE_URL = "https://www.petsathome.com"
 CATEGORIES = ["dog", "cat", "small-animal", "fish", "reptile", "bird-and-wildlife"]
 
-class PetsAtHomeETL(PetProductsETL):
 
+class PetsAtHomeETL(PetProductsETL):
     def transform(self, soup: BeautifulSoup, url: str):
-        
         # Get the data from encoded JSON
         product_data = soup.select_one("[id='__NEXT_DATA__']")
         product_data_dict = json.loads(product_data.text)
@@ -30,7 +30,9 @@ class PetsAtHomeETL(PetProductsETL):
             rating = "{} out of 5".format(rating["averageRating"])
         else:
             rating = None
-        description = product_data_dict["props"]["pageProps"]["baseProduct"]["description"]
+        description = product_data_dict["props"]["pageProps"]["baseProduct"][
+            "description"
+        ]
         product_url = url.replace("https://www.petsathome.com", "")
 
         # Placeholder for variant details
@@ -40,7 +42,9 @@ class PetsAtHomeETL(PetProductsETL):
         discount_percentages = []
 
         # Iterate through all product variants
-        for variant in product_data_dict["props"]["pageProps"]["baseProduct"]["products"]:
+        for variant in product_data_dict["props"]["pageProps"]["baseProduct"][
+            "products"
+        ]:
             variants.append(variant["label"])
 
             price = variant["price"]["base"]
@@ -59,10 +63,10 @@ class PetsAtHomeETL(PetProductsETL):
         # Compile the data acquired into dataframe
         df = pd.DataFrame(
             {
-                "variant": variants, 
+                "variant": variants,
                 "price": prices,
                 "discounted_price": discounted_prices,
-                "discount_percentage": discount_percentages
+                "discount_percentage": discount_percentages,
             }
         )
         df.insert(0, "url", product_url)
@@ -70,13 +74,13 @@ class PetsAtHomeETL(PetProductsETL):
         df.insert(0, "rating", rating)
         df.insert(0, "name", product_title)
         df.insert(0, "shop", SHOP)
-        
+
         return df
 
     # def transform(self, driver: uc.Chrome, url: str):
 
     #     try:
-        
+
     #         # Placeholder for some values
     #         rating = None
     #         variants = []
@@ -103,19 +107,19 @@ class PetsAtHomeETL(PetProductsETL):
     #             variant.click()
     #             variants.append(variant.text)
 
-    #             # There are two prices that could be listed: one regular price, and one easy-repeat price 
+    #             # There are two prices that could be listed: one regular price, and one easy-repeat price
     #             prices_listed = driver.find_elements(By.CSS_SELECTOR, "span[class*='purchase-type-selector_price__']")
     #             if prices_listed:
 
     #                 # Get the regular price
     #                 price = float(prices_listed[0].text.replace("£", ""))
     #                 prices.append(price)
-                    
+
     #                 # Check if easy-repeat prices are available
     #                 if len(prices_listed)>1:
     #                     discounted_price = float(prices_listed[1].text.replace("£", ""))
     #                     discounted_prices.append(discounted_price)
-    #                     discount_percentage = ((price - discounted_price) / price) 
+    #                     discount_percentage = ((price - discounted_price) / price)
     #                     discount_percentages.append(discount_percentage)
 
     #                 else:
@@ -138,11 +142,10 @@ class PetsAtHomeETL(PetProductsETL):
     #                     discounted_prices.append(None)
     #                     discount_percentages.append(None)
 
-
     #         # Compile the data acquired into dataframe
     #         df = pd.DataFrame(
     #             {
-    #                 "variant": variants, 
+    #                 "variant": variants,
     #                 "price": prices,
     #                 "discounted_price": discounted_prices,
     #                 "discount_percentage": discount_percentages
@@ -155,7 +158,7 @@ class PetsAtHomeETL(PetProductsETL):
     #         df.insert(0, "shop", SHOP)
 
     #         return df
-        
+
     #     except Exception as e:
     #         logger.error(f"Error scraping {url}: {e}")
 
@@ -164,21 +167,20 @@ class PetsAtHomeETL(PetProductsETL):
         cleaned_category = category.lower()
         if cleaned_category not in CATEGORIES:
             raise ValueError(f"Invalid category. Value must be in {CATEGORIES}")
-        
+
         urls = []
 
         path = f"/product/listing/{category}"
 
         while True:
-        
             # Construct link
             url = BASE_URL + path
 
-            # Parse request response 
+            # Parse request response
             soup = self.extract_from_url(url)
 
             wrappers = soup.select('a[class*="product-tile_wrapper"]')
-            new_urls = [BASE_URL+s["href"] for s in wrappers]
+            new_urls = [BASE_URL + s["href"] for s in wrappers]
             urls.extend(new_urls)
 
             next_page = soup.select_one('a[class*="results-pagination_more"]')
@@ -199,7 +201,6 @@ class PetsAtHomeETL(PetProductsETL):
         df_urls = self.extract_from_sql(db_conn, sql)
 
         for i, row in df_urls.iterrows():
-
             pkey = row["id"]
             url = row["url"]
 
@@ -216,7 +217,6 @@ class PetsAtHomeETL(PetProductsETL):
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
 
     def refresh_links(self, db_conn: Engine, table_name: str):
-        
         execute_query(db_conn, f"TRUNCATE TABLE {table_name};")
 
         for category in CATEGORIES:

@@ -1,13 +1,19 @@
-import requests
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+import requests
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://www.zooplus.co.uk"
 CATEGORIES = ["dogs", "cats", "small_pets", "birds"]
 
-def get_sublinks(category: str, tag_name: str = "a", class_name: str = "ProductGroupCard_productGroupLink", attribute: str = "data-pg-link"):
-    
+
+def get_sublinks(
+    category: str,
+    tag_name: str = "a",
+    class_name: str = "ProductGroupCard_productGroupLink",
+    attribute: str = "data-pg-link",
+):
     # Data validation on category
     cleaned_category = category.lower()
     if cleaned_category not in CATEGORIES:
@@ -16,7 +22,7 @@ def get_sublinks(category: str, tag_name: str = "a", class_name: str = "ProductG
     # Construct link
     category_link = f"{BASE_URL}/shop/{category}"
 
-    # Parse request response 
+    # Parse request response
     response = requests.get(category_link)
     soup = BeautifulSoup(response.content, "html.parser")
 
@@ -34,11 +40,12 @@ def get_sublinks(category: str, tag_name: str = "a", class_name: str = "ProductG
         for link in links:
             file.write(link + "\n")
 
+
 def get_products(link: str) -> BeautifulSoup:
-    # Parse request response 
+    # Parse request response
     response = requests.get(link)
     soup = BeautifulSoup(response.content, "html.parser")
-    
+
     # Get product wrappers. Each wrapper may have varying content.
     product_wrappers = soup.select('div[class*="ProductListItem_productWrapper"]')
 
@@ -47,15 +54,22 @@ def get_products(link: str) -> BeautifulSoup:
 
     # Iterate through the wrappers
     for wrapper in product_wrappers:
-
         # Get the product title, rating, and description
-        product_title = wrapper.select_one('a[class*="ProductListItem_productInfoTitleLink"]').text
+        product_title = wrapper.select_one(
+            'a[class*="ProductListItem_productInfoTitleLink"]'
+        ).text
         rating = wrapper.select_one('span[class*="pp-visually-hidden"]').text
-        description = wrapper.select_one('p[class*="ProductListItem_productInfoDescription"]').text
-        product_url = wrapper.select_one('a[class*="ProductListItem_productInfoTitleLink"]')["href"]
+        description = wrapper.select_one(
+            'p[class*="ProductListItem_productInfoDescription"]'
+        ).text
+        product_url = wrapper.select_one(
+            'a[class*="ProductListItem_productInfoTitleLink"]'
+        )["href"]
 
         # Get product variants. Each variant has their own price.
-        product_variants = wrapper.select('div[class*="ProductListItemVariant_variantWrapper"]')
+        product_variants = wrapper.select(
+            'div[class*="ProductListItemVariant_variantWrapper"]'
+        )
 
         # Placeholder for variant details
         variants = []
@@ -64,19 +78,31 @@ def get_products(link: str) -> BeautifulSoup:
 
         # Get the variant name, price, and reference price
         for variant in product_variants:
-            variants.append(variant.select_one('span[class*="ProductListItemVariant_variantDescription"]').text)
-            prices.append(variant.select_one('span[class*="z-price__amount"]').text.replace("£", ""))
+            variants.append(
+                variant.select_one(
+                    'span[class*="ProductListItemVariant_variantDescription"]'
+                ).text
+            )
+            prices.append(
+                variant.select_one('span[class*="z-price__amount"]').text.replace(
+                    "£", ""
+                )
+            )
 
             # Not all products are discounted, so sometimes there are no reference prices
             try:
-                reference_prices.append(variant.select_one('span[data-zta*="productReducedPriceRefPriceAmount"]').text.replace("£", ""))
+                reference_prices.append(
+                    variant.select_one(
+                        'span[data-zta*="productReducedPriceRefPriceAmount"]'
+                    ).text.replace("£", "")
+                )
             except:
                 reference_prices.append(None)
-        
+
         # Compile the data acquired into dataframe
         df = pd.DataFrame(
             {
-                "variant": variants, 
+                "variant": variants,
                 "price": prices,
                 "reference_price": reference_prices,
             }
@@ -87,18 +113,23 @@ def get_products(link: str) -> BeautifulSoup:
         df.insert(0, "product_title", product_title)
 
         consolidated_data.append(df)
-    
+
     df_consolidated = pd.concat(consolidated_data, ignore_index=True)
-    file_name = Path("data" + link.replace("https://www.zooplus.co.uk/shop", "").replace("?p=", "_") + ".csv")
+    file_name = Path(
+        "data"
+        + link.replace("https://www.zooplus.co.uk/shop", "").replace("?p=", "_")
+        + ".csv"
+    )
     file_name.parent.mkdir(parents=True, exist_ok=True)
     df_consolidated.to_csv(file_name, index=False)
 
     return soup
 
+
 def get_next_link(soup: BeautifulSoup) -> str:
     try:
         next_url = soup.find("a", attrs={"data-zta": "paginationNext"})["href"]
         return next_url
-    
+
     except:
         return None

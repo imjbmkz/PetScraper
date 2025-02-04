@@ -1,18 +1,14 @@
-import requests
-import pandas as pd
-from abc import ABC, abstractmethod
-from bs4 import BeautifulSoup
-from sqlalchemy import Engine
-from loguru import logger
-import undetected_chromedriver as uc
-from tenacity import (
-    before_sleep_log,
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_random,
-)
 import random
+from abc import ABC, abstractmethod
+
+import pandas as pd
+import requests
+import undetected_chromedriver as uc
+from bs4 import BeautifulSoup
+from loguru import logger
+from sqlalchemy import Engine
+from tenacity import (before_sleep_log, retry, retry_if_exception_type,
+                      stop_after_attempt, wait_random)
 
 from .utils import execute_query, get_sql_from_file
 
@@ -27,7 +23,6 @@ class PetProductsETL(ABC):
         self.session = requests.Session()
 
     def extract_from_driver(self, url: str) -> uc.Chrome:
-
         try:
             driver = uc.Chrome(headless=True, use_subprocess=False)
             driver.get(url)
@@ -37,7 +32,7 @@ class PetProductsETL(ABC):
         except Exception as e:
             logger.error(e)
             raise e
-    
+
     @retry(
         wait=wait_random(min=MIN_WAIT_BETWEEN_REQ, max=MAX_WAIT_BETWEEN_REQ),
         stop=stop_after_attempt(MAX_RETRIES),
@@ -45,14 +40,14 @@ class PetProductsETL(ABC):
         before_sleep=before_sleep_log(logger, "WARNING"),
         reraise=True,
     )
-    def extract_from_url(self, url: str, params: dict = None, headers: dict = None) -> BeautifulSoup:
+    def extract_from_url(
+        self, url: str, params: dict = None, headers: dict = None
+    ) -> BeautifulSoup:
         # Parse request response
         response = self.session.get(url=url, params=params, headers=headers)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "html.parser")
-        logger.info(
-            f"Successfully extracted data from {url} {response.status_code}"
-        )
+        logger.info(f"Successfully extracted data from {url} {response.status_code}")
         sleep_time = random.uniform(MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
         logger.info(f"Sleeping for {sleep_time} seconds...")
         return soup
@@ -60,7 +55,7 @@ class PetProductsETL(ABC):
     def extract_from_sql(self, db_conn: Engine, sql: str) -> pd.DataFrame:
         try:
             return pd.read_sql(sql, db_conn)
-        
+
         except Exception as e:
             logger.error(e)
             raise e
@@ -78,7 +73,7 @@ class PetProductsETL(ABC):
         except Exception as e:
             logger.error(e)
             raise e
-    
+
     def run(self, url: str, db_conn: Engine, table_name: str):
         soup = self.extract_from_url(url)
         df = self.transform(soup, url)
@@ -93,7 +88,7 @@ class PetProductsETL(ABC):
     @abstractmethod
     def get_links(self) -> pd.DataFrame:
         pass
-    
+
     @abstractmethod
     def refresh_links(self, db_conn: Engine, table_name: str):
         pass

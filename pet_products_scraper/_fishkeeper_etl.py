@@ -1,16 +1,18 @@
-import pandas as pd
 from datetime import datetime
-from loguru import logger
+
+import pandas as pd
 from bs4 import BeautifulSoup
+from loguru import logger
 from sqlalchemy import Engine
+
 from ._pet_products_etl import PetProductsETL
-from .utils import execute_query, update_url_scrape_status, get_sql_from_file
+from .utils import execute_query, get_sql_from_file, update_url_scrape_status
 
 SHOP = "FishKeeper"
 BASE_URL = "https://www.fishkeeper.co.uk"
 
+
 class FishKeeperETL(PetProductsETL):
-    
     def transform(self, soup: BeautifulSoup, url: str):
         pass
 

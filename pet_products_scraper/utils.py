@@ -1,6 +1,9 @@
-from sqlalchemy import create_engine, URL, Engine, text
+from sqlalchemy import URL, Engine, create_engine, text
 
-def get_db_conn(drivername: str, username: str, password: str, host: str, port: str, database: str) -> Engine:
+
+def get_db_conn(
+    drivername: str, username: str, password: str, host: str, port: str, database: str
+) -> Engine:
     connection_string = URL.create(
         drivername=drivername,
         username=username,
@@ -12,16 +15,19 @@ def get_db_conn(drivername: str, username: str, password: str, host: str, port: 
     db_conn = create_engine(connection_string)
     return db_conn
 
+
 def get_sql_from_file(file_name: str) -> str:
     with open(f"sql/{file_name}") as f:
         sql = f.read()
 
     return sql
 
+
 def update_url_scrape_status(db_engine: Engine, pkey: int, status: str, timestamp: str):
     sql = get_sql_from_file("update_url_scrape_status.sql")
     sql = sql.format(status=status, timestamp=timestamp, pkey=pkey)
     execute_query(db_engine, sql)
+
 
 def execute_query(engine: Engine, sql: str) -> None:
     with engine.connect() as conn:
