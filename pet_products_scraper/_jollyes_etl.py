@@ -18,12 +18,18 @@ class JollyesETL(PetProductsETL):
     def transform(self, soup: BeautifulSoup, url: str) -> pd.DataFrame:
         try:
 
-            data = json.loads(soup.select_one("section[class*='lazy-review-section']").select_one("script").text)
+            data = json.loads(soup.select_one("section[class*='lazy-review-section']").select_one("script[type*='application']").text)
 
             # Get data from parsed JSON
             product_title = data["name"]
             description = data["description"]
-            rating = data["aggregateRating"]["ratingCount"]
+
+            # Products sometimes have no ratings
+            if "aggregateRating" in data.keys():
+                rating = data["aggregateRating"]["ratingCount"]
+            else:
+                rating = None
+
             product_url = url.replace(self.BASE_URL, "")
             price = float(data["offers"]["price"])
 
