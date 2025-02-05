@@ -58,44 +58,51 @@ class JollyesETL(PetProductsETL):
         category_link = f"{self.BASE_URL}/{cleaned_category}.html"
         soup = self.extract_from_url("GET", category_link)
 
-        subcategory_links = []
+        if soup:
 
-        # Get the subcategory links from the left navigation menu
-        ul_tags = soup.select("ul[class='second-category']")
-        for ul_tag in ul_tags:
-            links = ul_tag.select("a")
-            for link in links:
-                subcategory_links.append(link["href"])
+            subcategory_links = []
 
-        urls = []
-        start_index = 1
+            # Get the subcategory links from the left navigation menu
+            ul_tags = soup.select("ul[class='second-category']")
+            for ul_tag in ul_tags:
+                links = ul_tag.select("a")
+                for link in links:
+                    subcategory_links.append(link["href"])
 
-        for subcategory in subcategory_links:
+            urls = []
+            start_index = 1
 
-            n = start_index
+            for subcategory in subcategory_links:
 
-            while True:
-                # Parse link
-                url = f"{self.BASE_URL}{subcategory}?page={n}&perPage=100"
-                soup = self.extract_from_url("GET", url)
+                n = start_index
 
-                # Get product tiles and get the href values 
-                product_tiles = soup.select("div[class*='product-tile']")
-                for product_tile in product_tiles:
-                    urls.append(self.BASE_URL + product_tile.select_one("a")["href"])
+                while True:
+                    # Parse link
+                    url = f"{self.BASE_URL}{subcategory}?page={n}&perPage=100"
+                    soup = self.extract_from_url("GET", url)
 
-                # Check if this element is available
-                progress = soup.select_one("div[class*='progress-row w-100']")
-                if progress:
-                    n += 1
-                    continue
+                    if soup:
 
-                break
+                        # Get product tiles and get the href values 
+                        product_tiles = soup.select("div[class*='product-tile']")
+                        for product_tile in product_tiles:
+                            urls.append(self.BASE_URL + product_tile.select_one("a")["href"])
 
-        df = pd.DataFrame({"url": urls})
-        df.insert(0, "shop", self.SHOP)
+                        # Check if this element is available
+                        progress = soup.select_one("div[class*='progress-row w-100']")
+                        if progress:
+                            n += 1
+                            continue
 
-        return df
+                        break
+
+                    if progress:
+                        n += 1
+
+            df = pd.DataFrame({"url": urls})
+            df.insert(0, "shop", self.SHOP)
+
+            return df
 
     def run(self, db_conn: Engine, table_name: str):
         sql = get_sql_from_file("select_unscraped_urls.sql")
