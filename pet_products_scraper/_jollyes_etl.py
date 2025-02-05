@@ -95,8 +95,7 @@ class JollyesETL(PetProductsETL):
 
                         break
 
-                    if progress:
-                        n += 1
+                    n += 1
 
             df = pd.DataFrame({"url": urls})
             df.insert(0, "shop", self.SHOP)
