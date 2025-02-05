@@ -24,9 +24,8 @@ class JollyesETL(PetProductsETL):
             product_title = data["name"]
             description = data["description"]
             rating = data["aggregateRating"]["ratingCount"]
-            product_url = url.replace("https://www.jollyes.co.uk", "")
+            product_url = url.replace(self.BASE_URL, "")
             price = float(data["offers"]["price"])
-            product_url = url.replace("https://www.jollyes.co.uk", "")
 
             # Compile the data acquired into dataframe
             df = pd.DataFrame(

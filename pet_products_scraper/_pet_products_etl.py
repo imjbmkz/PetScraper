@@ -107,7 +107,7 @@ class PetProductsETL(ABC):
 
         for category in self.CATEGORIES:
             df = self.get_links(category)
-            if df:
+            if df is not None:
                 self.load(df, db_conn, table_name)
 
         sql = get_sql_from_file("insert_into_urls.sql")
