@@ -3,7 +3,14 @@ import datetime as dt
 from loguru import logger
 from dotenv import load_dotenv
 from pet_products_scraper import utils
-from pet_products_scraper import PetProductsETL, ZooplusETL, PetsAtHomeETL, PetPlanetETL
+from pet_products_scraper import (
+    PetProductsETL, 
+    ZooplusETL, 
+    PetsAtHomeETL, 
+    PetPlanetETL, 
+    JollyesETL,
+    
+)
 
 PROGRAM_NAME = "Pet Products Scraper"
 
@@ -11,7 +18,8 @@ def run_etl(shop: str) -> PetProductsETL:
     factory = {
         "Zooplus": ZooplusETL(),
         "PetsAtHome": PetsAtHomeETL(),
-        "PetPlanet":PetPlanetETL(),
+        "PetPlanet": PetPlanetETL(),
+        "Jollyes": JollyesETL(),
     }
 
     if shop in factory:
@@ -25,7 +33,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("task", choices=["get_links", "scrape"], help="Identify the task to be executed. get_links=get links from registered shops; scrape=scrape products.")
-parser.add_argument("-s", "--shop", choices=["Zooplus", "PetsAtHome", "PetPlanet"], help="Select a shop to scrape. Default: all shops.")
+parser.add_argument("-s", "--shop", choices=utils.SHOPS, help="Select a shop to scrape. Default: all shops.")
 args = parser.parse_args()
 
 if __name__=="__main__":

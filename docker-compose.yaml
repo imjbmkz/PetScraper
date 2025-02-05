@@ -1,0 +1,31 @@
+services:
+
+  postgres:
+    image: postgres:17    
+    environment:
+      POSTGRES_USER: etl_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: pet_products
+    volumes:
+      - "./volumes/postgres:/var/lib/postgresql/data:rw" # Data persistence
+      # - "./sql/init-create-db-user.sql:/docker-entrypoint-initdb.d/init-create-db-user.sql" # create database and user
+      - "./sql/init.sql:/docker-entrypoint-initdb.d/init.sql" # create tables
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "pet_products"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: on-failure
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - "./volumes/pgadmin:/var/lib/pgadmin:rw"
+    ports:
+      - "8081:80"

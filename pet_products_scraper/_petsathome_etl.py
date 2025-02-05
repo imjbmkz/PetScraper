@@ -10,11 +10,13 @@ from selenium.webdriver.common.by import By
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
-SHOP = "PetsAtHome"
-BASE_URL = "https://www.petsathome.com"
-CATEGORIES = ["dog", "cat", "small-animal", "fish", "reptile", "bird-and-wildlife"]
-
 class PetsAtHomeETL(PetProductsETL):
+
+    def __init__(self):
+        super().__init__()
+        self.SHOP = "PetsAtHome"
+        self.BASE_URL = "https://www.petsathome.com"
+        self.CATEGORIES = ["dog", "cat", "small-animal", "fish", "reptile", "bird-and-wildlife"]
 
     def transform(self, soup: BeautifulSoup, url: str):
 
@@ -71,7 +73,7 @@ class PetsAtHomeETL(PetProductsETL):
             df.insert(0, "description", description)
             df.insert(0, "rating", rating)
             df.insert(0, "name", product_title)
-            df.insert(0, "shop", SHOP)
+            df.insert(0, "shop", self.SHOP)
             
             return df
         
@@ -81,8 +83,8 @@ class PetsAtHomeETL(PetProductsETL):
     def get_links(self, category: str) -> pd.DataFrame:
         # Data validation on category
         cleaned_category = category.lower()
-        if cleaned_category not in CATEGORIES:
-            raise ValueError(f"Invalid category. Value must be in {CATEGORIES}")
+        if cleaned_category not in self.CATEGORIES:
+            raise ValueError(f"Invalid category. Value must be in {self.CATEGORIES}")
         
         urls = []
 
@@ -91,13 +93,13 @@ class PetsAtHomeETL(PetProductsETL):
         while True:
         
             # Construct link
-            url = BASE_URL + path
+            url = self.BASE_URL + path
 
             # Parse request response 
             soup = self.extract_from_url("GET", url)
 
             wrappers = soup.select('a[class*="product-tile_wrapper"]')
-            new_urls = [BASE_URL+s["href"] for s in wrappers]
+            new_urls = [self.BASE_URL+s["href"] for s in wrappers]
             urls.extend(new_urls)
 
             next_page = soup.select_one('a[class*="results-pagination_more"]')
@@ -108,13 +110,13 @@ class PetsAtHomeETL(PetProductsETL):
                 break
 
         df = pd.DataFrame({"url": urls})
-        df.insert(0, "shop", SHOP)
+        df.insert(0, "shop", self.SHOP)
 
         return df
 
     def run(self, db_conn: Engine, table_name: str):
         sql = get_sql_from_file("select_unscraped_urls.sql")
-        sql = sql.format(shop=SHOP)
+        sql = sql.format(shop=self.SHOP)
         df_urls = self.extract_from_sql(db_conn, sql)
 
         for i, row in df_urls.iterrows():
@@ -133,14 +135,3 @@ class PetsAtHomeETL(PetProductsETL):
 
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
-
-    def refresh_links(self, db_conn: Engine, table_name: str):
-        
-        execute_query(db_conn, f"TRUNCATE TABLE {table_name};")
-
-        for category in CATEGORIES:
-            df = self.get_links(category)
-            self.load(df, db_conn, table_name)
-
-        sql = get_sql_from_file("insert_into_urls.sql")
-        execute_query(db_conn, sql)

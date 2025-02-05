@@ -1,8 +1,8 @@
 ShopID: 1	https://www.zooplus.co.uk/ - DONE
 ShopID: 2	https://www.petsathome.com/ - DONE
-ShopID: 3	https://www.petplanet.co.uk/
-ShopID: 4	https://www.pet-supermarket.co.uk/
-ShopID: 5	https://www.petdrugsonline.co.uk/
+ShopID: 3	https://www.petplanet.co.uk/ - SKIPPED, AJAX
+ShopID: 4	https://www.pet-supermarket.co.uk/ - Kuya Jerric
+ShopID: 5	https://www.petdrugsonline.co.uk/ - SKIPPED, AJAX
 ShopID: 6	https://www.jollyes.co.uk/
 ShopID: 7	https://www.lilyskitchen.co.uk/
 ShopID: 8	https://www.viovet.co.uk/

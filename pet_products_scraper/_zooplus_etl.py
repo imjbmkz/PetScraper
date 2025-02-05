@@ -6,11 +6,13 @@ from sqlalchemy import Engine
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
-SHOP = "Zooplus"
-BASE_URL = "https://www.zooplus.co.uk"
-CATEGORIES = ["dogs", "cats", "small_pets", "birds"]
-
 class ZooplusETL(PetProductsETL):
+
+    def __init__(self):
+        super().__init__()
+        self.SHOP = "Zooplus"
+        self.BASE_URL = "https://www.zooplus.co.uk"
+        self.CATEGORIES = ["dogs", "cats", "small_pets", "birds"]
     
     def transform(self, soup: BeautifulSoup, url: str):
         
@@ -82,7 +84,7 @@ class ZooplusETL(PetProductsETL):
         
         try:
             df_consolidated = pd.concat(consolidated_data, ignore_index=True)
-            df_consolidated.insert(0, "shop", SHOP)
+            df_consolidated.insert(0, "shop", self.SHOP)
 
             return df_consolidated
         
@@ -92,11 +94,11 @@ class ZooplusETL(PetProductsETL):
     def get_links(self, category: str, tag_name: str = "a", class_name: str = "ProductGroupCard_productGroupLink", attribute: str = "href") -> pd.DataFrame:
         # Data validation on category
         cleaned_category = category.lower()
-        if cleaned_category not in CATEGORIES:
-            raise ValueError(f"Invalid category. Value must be in {CATEGORIES}")
+        if cleaned_category not in self.CATEGORIES:
+            raise ValueError(f"Invalid category. Value must be in {self.CATEGORIES}")
 
         # Construct link
-        category_link = f"{BASE_URL}/shop/{category}"
+        category_link = f"{self.BASE_URL}/shop/{category}"
 
         # Parse request response 
         soup = self.extract_from_url("GET", category_link)
@@ -105,18 +107,18 @@ class ZooplusETL(PetProductsETL):
         tags = soup.select(f'{tag_name}[class*="{class_name}"]')
 
         # Get all links; filter out specials
-        urls = [f"{BASE_URL}{tag[attribute]}" for tag in tags]
+        urls = [f"{self.BASE_URL}{tag[attribute]}" for tag in tags]
         urls = [url for url in urls if category_link in url]
 
         df = pd.DataFrame({"url": urls})
-        df.insert(0, "shop", SHOP)
+        df.insert(0, "shop", self.SHOP)
 
         return df
 
     def run(self, db_conn: Engine, table_name: str):
 
         sql = get_sql_from_file("select_unscraped_urls.sql")
-        sql = sql.format(shop=SHOP)
+        sql = sql.format(shop=self.SHOP)
         df_urls = self.extract_from_sql(db_conn, sql)
 
         for i, row in df_urls.iterrows():
@@ -149,14 +151,3 @@ class ZooplusETL(PetProductsETL):
             
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
-
-    def refresh_links(self, db_conn: Engine, table_name: str):
-        
-        execute_query(db_conn, f"TRUNCATE TABLE {table_name};")
-
-        for category in CATEGORIES:
-            df = self.get_links(category)
-            self.load(df, db_conn, table_name)
-
-        sql = get_sql_from_file("insert_into_urls.sql")
-        execute_query(db_conn, sql)

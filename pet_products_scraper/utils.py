@@ -1,4 +1,12 @@
+from loguru import logger
 from sqlalchemy import create_engine, URL, Engine, text
+
+SHOPS = [
+    "Zooplus", 
+    "PetsAtHome", 
+    "PetPlanet",
+    "Jollyes",
+]
 
 def get_db_conn(drivername: str, username: str, password: str, host: str, port: str, database: str) -> Engine:
     connection_string = URL.create(
@@ -24,6 +32,9 @@ def update_url_scrape_status(db_engine: Engine, pkey: int, status: str, timestam
     execute_query(db_engine, sql)
 
 def execute_query(engine: Engine, sql: str) -> None:
+    logger.info(f"Running query {sql}")
     with engine.connect() as conn:
         conn.execute(text(sql))
         conn.commit()
+
+    logger.info("Query successfully executed.")

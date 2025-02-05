@@ -21,10 +21,12 @@ MAX_WAIT_BETWEEN_REQ = 2
 MIN_WAIT_BETWEEN_REQ = 0
 REQUEST_TIMEOUT = 30
 
-
 class PetProductsETL(ABC):
     def __init__(self):
         self.session = requests.Session()
+        self.SHOP = ""
+        self.BASE_URL = ""
+        self.CATEGORIES = []
 
     def extract_from_driver(self, url: str) -> uc.Chrome:
 
@@ -46,16 +48,20 @@ class PetProductsETL(ABC):
         reraise=True,
     )
     def extract_from_url(self, method: str, url: str, params: dict = None, headers: dict = None, verify: bool = True) -> BeautifulSoup:
-        # Parse request response
-        response = self.session.request(method=method, url=url, params=params, headers=headers)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, "html.parser")
-        logger.info(
-            f"Successfully extracted data from {url} {response.status_code}"
-        )
-        sleep_time = random.uniform(MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
-        logger.info(f"Sleeping for {sleep_time} seconds...")
-        return soup
+        try:
+            # Parse request response
+            response = self.session.request(method=method, url=url, params=params, headers=headers, verify=verify)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            logger.info(
+                f"Successfully extracted data from {url} {response.status_code}"
+            )
+            sleep_time = random.uniform(MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
+            logger.info(f"Sleeping for {sleep_time} seconds...")
+            return soup
+        
+        except Exception as e:
+            logger.error(f"Error in parsing {url}: {e}")
 
     def extract_from_sql(self, db_conn: Engine, sql: str) -> pd.DataFrame:
         try:
@@ -81,19 +87,27 @@ class PetProductsETL(ABC):
     
     def run(self, url: str, db_conn: Engine, table_name: str):
         soup = self.extract_from_url(url)
-        df = self.transform(soup, url)
-        self.load(df, db_conn, table_name)
 
-        sql = get_sql_from_file("insert_into_pet_products.sql")
-        execute_query(db_conn, sql)
+        if soup:
+            df = self.transform(soup, url)
+            self.load(df, db_conn, table_name)
 
-        sql = get_sql_from_file("insert_into_pet_product_variants.sql")
-        execute_query(db_conn, sql)
+            sql = get_sql_from_file("insert_into_pet_products.sql")
+            execute_query(db_conn, sql)
+
+            sql = get_sql_from_file("insert_into_pet_product_variants.sql")
+            execute_query(db_conn, sql)
 
     @abstractmethod
     def get_links(self) -> pd.DataFrame:
         pass
     
-    @abstractmethod
     def refresh_links(self, db_conn: Engine, table_name: str):
-        pass
+        execute_query(db_conn, f"TRUNCATE TABLE {table_name};")
+
+        for category in self.CATEGORIES:
+            df = self.get_links(category)
+            self.load(df, db_conn, table_name)
+
+        sql = get_sql_from_file("insert_into_urls.sql")
+        execute_query(db_conn, sql)
