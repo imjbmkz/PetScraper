@@ -94,7 +94,7 @@ class PetsAtHomeETL(PetProductsETL):
             url = BASE_URL + path
 
             # Parse request response 
-            soup = self.extract_from_url(url)
+            soup = self.extract_from_url("GET", url)
 
             wrappers = soup.select('a[class*="product-tile_wrapper"]')
             new_urls = [BASE_URL+s["href"] for s in wrappers]
@@ -124,7 +124,7 @@ class PetsAtHomeETL(PetProductsETL):
 
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            soup = self.extract_from_url(url)
+            soup = self.extract_from_url("GET", url)
             df = self.transform(soup, url)
 
             if df is not None:

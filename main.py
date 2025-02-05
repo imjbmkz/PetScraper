@@ -1,8 +1,11 @@
 import os, sys, argparse
+import datetime as dt
 from loguru import logger
 from dotenv import load_dotenv
 from pet_products_scraper import utils
 from pet_products_scraper import PetProductsETL, ZooplusETL, PetsAtHomeETL, PetPlanetETL
+
+PROGRAM_NAME = "Pet Products Scraper"
 
 def run_etl(shop: str) -> PetProductsETL:
     factory = {
@@ -17,7 +20,7 @@ def run_etl(shop: str) -> PetProductsETL:
         raise ValueError(f"Shop {shop} is not supported. Please pass a valid shop.")
 
 parser = argparse.ArgumentParser(
-    prog="Pet Products Scraper",
+    prog=PROGRAM_NAME,
     description="Scrape product details from various pet shops."
 )
 
@@ -27,11 +30,15 @@ args = parser.parse_args()
 
 if __name__=="__main__":
 
+    start_time = dt.datetime.now()
+
     logger.remove()
     logger.add("logs/std_out.log", rotation="10 MB", level="INFO")
     logger.add("logs/std_err.log", rotation="10 MB", level="ERROR")
     logger.add(sys.stdout, level="INFO")
     logger.add(sys.stderr, level="ERROR")
+
+    logger.info(f"{PROGRAM_NAME} has started")
 
     load_dotenv()
     MYSQL_HOST = os.getenv("MYSQL_HOST")
@@ -69,3 +76,7 @@ if __name__=="__main__":
 
         sql = utils.get_sql_from_file("insert_into_pet_product_variants.sql")
         utils.execute_query(engine, sql)
+
+    end_time = dt.datetime.now()
+    duration = end_time - start_time
+    logger.info(f"{PROGRAM_NAME} has ended. Elapsed: {duration}")

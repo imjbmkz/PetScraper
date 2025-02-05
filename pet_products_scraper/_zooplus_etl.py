@@ -99,7 +99,7 @@ class ZooplusETL(PetProductsETL):
         category_link = f"{BASE_URL}/shop/{category}"
 
         # Parse request response 
-        soup = self.extract_from_url(category_link)
+        soup = self.extract_from_url("GET", category_link)
 
         # Get all tags with matching class name
         tags = soup.select(f'{tag_name}[class*="{class_name}"]')
@@ -128,7 +128,7 @@ class ZooplusETL(PetProductsETL):
 
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                soup = self.extract_from_url(url)
+                soup = self.extract_from_url("GET", url)
                 df = self.transform(soup, url)
 
                 if df is not None:
