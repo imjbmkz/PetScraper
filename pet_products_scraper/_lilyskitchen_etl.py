@@ -20,42 +20,43 @@ class LilysKitchenETL(PetProductsETL):
     
     def transform(self, soup: BeautifulSoup, url: str):
         
-        script_data = None
+        if soup:
+            script_data = None
 
-        # Check which script tag holds the product data
-        script_tags = soup.find_all("script")
-        for script_tag in script_tags:
-            script_tag_content = script_tag.text.strip() 
-            if script_tag.text.startswith("pageContext = {"):
-                script_data = script_tag_content.replace("pageContext = ", "")
-                script_data = script_data[:-1] # remove semicolon in the last character
-                break
+            # Check which script tag holds the product data
+            script_tags = soup.find_all("script")
+            for script_tag in script_tags:
+                script_tag_content = script_tag.text.strip() 
+                if script_tag.text.startswith("pageContext = {"):
+                    script_data = script_tag_content.replace("pageContext = ", "")
+                    script_data = script_data[:-1] # remove semicolon in the last character
+                    break
 
-        # Parse the data into dataframe
-        if script_data:
-            # Parse product data
-            product_data = json.loads(script_data)["analytics"]["product"]
-            if isinstance(product_data, list):
-                df = pd.DataFrame(product_data)
-            else:
-                df = pd.DataFrame([product_data])
+            # Parse the data into dataframe
+            if script_data:
+                # Parse product data
+                product_data = json.loads(script_data)["analytics"]["product"]
+                if isinstance(product_data, list):
+                    df = pd.DataFrame(product_data)
+                else:
+                    df = pd.DataFrame([product_data])
 
-            # Parse product rating
-            rating_value = None
-            rating = json.loads(soup.select("script[type*='application/ld+json']")[1].text)
-            if "aggregateRating" in rating.keys():
-                rating_value = rating["aggregateRating"]["ratingValue"]
-            df["rating"] = f"{rating_value} out of 5"
+                # Parse product rating
+                rating_value = None
+                rating = json.loads(soup.select("script[type*='application/ld+json']")[1].text)
+                if "aggregateRating" in rating.keys():
+                    rating_value = rating["aggregateRating"]["ratingValue"]
+                df["rating"] = f"{rating_value} out of 5"
 
-            # Reformat dataframe
-            df = df[["name", "rating", "description", "url", "unit_price", "unit_sale_price"]].copy()
-            df.rename({"unit_price": "price", "unit_sale_price": "discounted_price"}, axis=1, inplace=True)
-            
-            # Additional columns
-            df["discount_percentage"] = (df["price"] - df["discounted_price"]) / df["price"]
-            df["shop"] = self.SHOP
+                # Reformat dataframe
+                df = df[["name", "rating", "description", "url", "unit_price", "unit_sale_price"]].copy()
+                df.rename({"unit_price": "price", "unit_sale_price": "discounted_price"}, axis=1, inplace=True)
+                
+                # Additional columns
+                df["discount_percentage"] = (df["price"] - df["discounted_price"]) / df["price"]
+                df["shop"] = self.SHOP
 
-            return df
+                return df
 
     def get_links(self, category: str) -> pd.DataFrame:
         # Data validation on category
@@ -68,27 +69,28 @@ class LilysKitchenETL(PetProductsETL):
 
         # Parse request response 
         soup = self.extract_from_url("GET", category_link)
+        if soup:
 
-        script_data = None
+            script_data = None
 
-        # Check which script tag holds the product data
-        script_tags = soup.find_all("script")
-        for script_tag in script_tags:
-            script_tag_content = script_tag.text.strip() 
-            if script_tag.text.startswith("pageContext = {"):
-                script_data = script_tag_content.replace("pageContext = ", "")
-                script_data = script_data[:-1] # remove semicolon in the last character
-                break
+            # Check which script tag holds the product data
+            script_tags = soup.find_all("script")
+            for script_tag in script_tags:
+                script_tag_content = script_tag.text.strip() 
+                if script_tag.text.startswith("pageContext = {"):
+                    script_data = script_tag_content.replace("pageContext = ", "")
+                    script_data = script_data[:-1] # remove semicolon in the last character
+                    break
 
-        # Parse the data into dataframe
-        if script_data:
-            product_data = json.loads(script_data)
-            product_lists = product_data["analytics"]["listing"]["items"]
-            df = pd.DataFrame(product_lists)[["url"]]
-            df["url"] = self.BASE_URL + df["url"]
-            df["shop"] = self.SHOP
+            # Parse the data into dataframe
+            if script_data:
+                product_data = json.loads(script_data)
+                product_lists = product_data["analytics"]["listing"]["items"]
+                df = pd.DataFrame(product_lists)[["url"]]
+                df["url"] = self.BASE_URL + df["url"]
+                df["shop"] = self.SHOP
 
-            return df
+                return df
 
     # def run(self, db_conn: Engine, table_name: str):
     #     pass
