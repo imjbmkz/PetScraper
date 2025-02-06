@@ -55,7 +55,7 @@ class LilysKitchenETL(PetProductsETL):
                 df.rename({"unit_price": "price", "unit_sale_price": "discounted_price"}, axis=1, inplace=True)
                 
                 # Additional columns
-                if not df["price"][0]:
+                if df["price"].values[0]:
                     df["discount_percentage"] = (df["price"] - df["discounted_price"]) / df["price"]
                 df["shop"] = self.SHOP
 
