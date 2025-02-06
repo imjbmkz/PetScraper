@@ -42,18 +42,23 @@ class LilysKitchenETL(PetProductsETL):
                     df = pd.DataFrame([product_data])
 
                 # Parse product rating
-                rating_value = None
                 rating = json.loads(soup.select("script[type*='application/ld+json']")[1].text)
                 if "aggregateRating" in rating.keys():
                     rating_value = rating["aggregateRating"]["ratingValue"]
-                df["rating"] = f"{rating_value} out of 5"
+                    rating_value = f"{rating_value} out of 5"
+                else:
+                    rating_value = None
+                df["rating"] = rating_value
 
                 # Reformat dataframe
                 df = df[["name", "rating", "description", "url", "unit_price", "unit_sale_price"]].copy()
                 df.rename({"unit_price": "price", "unit_sale_price": "discounted_price"}, axis=1, inplace=True)
                 
                 # Additional columns
-                df["discount_percentage"] = (df["price"] - df["discounted_price"]) / df["price"]
+                if df["price"][0]:
+                    df["discount_percentage"] = None
+                else:
+                    df["discount_percentage"] = (df["price"] - df["discounted_price"]) / df["price"]
                 df["shop"] = self.SHOP
 
                 return df
