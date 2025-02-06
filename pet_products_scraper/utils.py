@@ -1,13 +1,6 @@
 from loguru import logger
 from sqlalchemy import create_engine, URL, Engine, text
 
-SHOPS = [
-    "Zooplus", 
-    "PetsAtHome", 
-    "PetPlanet",
-    "Jollyes",
-]
-
 def get_db_conn(drivername: str, username: str, password: str, host: str, port: str, database: str) -> Engine:
     connection_string = URL.create(
         drivername=drivername,

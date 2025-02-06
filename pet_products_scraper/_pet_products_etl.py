@@ -1,5 +1,6 @@
 import requests
 import pandas as pd
+from datetime import datetime as dt
 from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
 from sqlalchemy import Engine
@@ -14,7 +15,7 @@ from tenacity import (
 )
 import random
 
-from .utils import execute_query, get_sql_from_file
+from .utils import execute_query, get_sql_from_file, update_url_scrape_status
 
 MAX_RETRIES = 10
 MAX_WAIT_BETWEEN_REQ = 2
@@ -85,18 +86,27 @@ class PetProductsETL(ABC):
             logger.error(e)
             raise e
     
-    def run(self, url: str, db_conn: Engine, table_name: str):
-        soup = self.extract_from_url(url)
+    def run(self, db_conn: Engine, table_name: str):
+        sql = get_sql_from_file("select_unscraped_urls.sql")
+        sql = sql.format(shop=self.SHOP)
+        df_urls = self.extract_from_sql(db_conn, sql)
 
-        if soup:
+        for i, row in df_urls.iterrows():
+
+            pkey = row["id"]
+            url = row["url"]
+
+            now = dt.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            soup = self.extract_from_url("GET", url)
             df = self.transform(soup, url)
-            self.load(df, db_conn, table_name)
 
-            sql = get_sql_from_file("insert_into_pet_products.sql")
-            execute_query(db_conn, sql)
+            if df is not None:
+                self.load(df, db_conn, table_name)
+                update_url_scrape_status(db_conn, pkey, "DONE", now)
 
-            sql = get_sql_from_file("insert_into_pet_product_variants.sql")
-            execute_query(db_conn, sql)
+            else:
+                update_url_scrape_status(db_conn, pkey, "FAILED", now)
 
     @abstractmethod
     def get_links(self) -> pd.DataFrame:

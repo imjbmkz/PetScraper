@@ -9,8 +9,17 @@ from pet_products_scraper import (
     PetsAtHomeETL, 
     PetPlanetETL, 
     JollyesETL,
+    LilysKitchenETL,
     
 )
+
+SHOPS = [
+    "Zooplus", 
+    "PetsAtHome", 
+    "PetPlanet",
+    "Jollyes",
+    "LilysKitchen",
+]
 
 PROGRAM_NAME = "Pet Products Scraper"
 
@@ -20,6 +29,7 @@ def run_etl(shop: str) -> PetProductsETL:
         "PetsAtHome": PetsAtHomeETL(),
         "PetPlanet": PetPlanetETL(),
         "Jollyes": JollyesETL(),
+        "LilysKitchen": LilysKitchenETL(),
     }
 
     if shop in factory:
@@ -33,7 +43,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("task", choices=["get_links", "scrape"], help="Identify the task to be executed. get_links=get links from registered shops; scrape=scrape products.")
-parser.add_argument("-s", "--shop", choices=utils.SHOPS, help="Select a shop to scrape. Default: all shops.")
+parser.add_argument("-s", "--shop", choices=SHOPS, help="Select a shop to scrape. Default: all shops.")
 args = parser.parse_args()
 
 if __name__=="__main__":
