@@ -18,7 +18,9 @@ SELECT DISTINCT
 FROM stg_pet_products a 
 LEFT JOIN pet_products b
     ON b.url = a.url
-WHERE CONCAT(a.url,a.variant) NOT IN (
-    SELECT CONCAT(url,variant)
+
+-- Replace nulls with empty string to avoid issues with concatenating
+WHERE CONCAT(a.url,IFNULL(a.variant,'')) NOT IN (
+    SELECT CONCAT(url,IFNULL(variant,''))
     FROM pet_product_variants
 )
