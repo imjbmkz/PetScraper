@@ -95,6 +95,9 @@ if __name__=="__main__":
         sql = utils.get_sql_from_file("insert_into_pet_product_variants.sql")
         utils.execute_query(engine, sql)
 
+        sql = utils.get_sql_from_file("insert_into_pet_product_variant_prices.sql")
+        utils.execute_query(engine, sql)
+
     end_time = dt.datetime.now()
     duration = end_time - start_time
     logger.info(f"{PROGRAM_NAME} has ended. Elapsed: {duration}")
