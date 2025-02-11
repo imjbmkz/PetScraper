@@ -9,15 +9,15 @@ CREATE TABLE shops (
 INSERT INTO shops (name, base_url)
 VALUES 
     ('Zooplus','https://www.zooplus.co.uk/')
-    ,('Pets at Home','https://www.petsathome.com/')
-    ,('Petplanet','https://www.petplanet.co.uk/')
-    ,('Pet Supermarket','https://www.pet-supermarket.co.uk/')
-    ,('Pet Drugs Online','https://www.petdrugsonline.co.uk/')
+    ,('PetsAtHome','https://www.petsathome.com/')
+    ,('PetPlanet','https://www.petplanet.co.uk/')
+    ,('PetSupermarket','https://www.pet-supermarket.co.uk/')
+    ,('PetDrugsOnline','https://www.petdrugsonline.co.uk/')
     ,('Jollyes','https://www.jollyes.co.uk/')
-    ,('Lily''s Kitchen','https://www.lilyskitchen.co.uk/')
+    ,('LilyKitchen','https://www.lilyskitchen.co.uk/')
     ,('Viovet','https://www.viovet.co.uk/')
     ,('Bitiba','https://www.bitiba.co.uk/')
-    ,('Direct Vet','https://www.direct-vet.co.uk/')
+    ,('DirectVet','https://www.direct-vet.co.uk/')
     ,('Fishkeeper','https://www.fishkeeper.co.uk/')
     ,('Purina','https://www.purina.co.uk/');
 

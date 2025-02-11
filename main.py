@@ -16,7 +16,7 @@ from pet_products_scraper import (
 SHOPS = [
     "Zooplus", 
     "PetsAtHome", 
-    "PetPlanet",
+    # "PetPlanet",
     "Jollyes",
     "LilysKitchen",
 ]
