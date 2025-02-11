@@ -141,12 +141,13 @@ class ZooplusETL(PetProductsETL):
                 else:
                     update_url_scrape_status(db_conn, pkey, "FAILED", now)
 
-                # Repeat the process if there are new pages
-                next_page_a = soup.find("a", attrs={"data-zta": "paginationNext"})
-                if next_page_a:
-                    url = next_page_a["href"]
-                else:
-                    break
+                if soup:
+                    # Repeat the process if there are new pages
+                    next_page_a = soup.find("a", attrs={"data-zta": "paginationNext"})
+                    if next_page_a:
+                        url = next_page_a["href"]
+                    else:
+                        break
             
             if df is not None:
                 update_url_scrape_status(db_conn, pkey, "DONE", now)

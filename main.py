@@ -10,6 +10,7 @@ from pet_products_scraper import (
     PetPlanetETL, 
     JollyesETL,
     LilysKitchenETL,
+    BitibaETL
     
 )
 
@@ -19,6 +20,7 @@ SHOPS = [
     # "PetPlanet",
     "Jollyes",
     "LilysKitchen",
+    "Bitiba",
 ]
 
 PROGRAM_NAME = "Pet Products Scraper"
@@ -30,6 +32,7 @@ def run_etl(shop: str) -> PetProductsETL:
         "PetPlanet": PetPlanetETL(),
         "Jollyes": JollyesETL(),
         "LilysKitchen": LilysKitchenETL(),
+        "Bitiba": BitibaETL(),
     }
 
     if shop in factory:
