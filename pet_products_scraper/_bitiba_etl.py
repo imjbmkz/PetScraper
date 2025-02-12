@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 from datetime import datetime
 from loguru import logger
@@ -22,7 +23,7 @@ class BitibaETL(PetProductsETL):
         if soup:
         
             # Get product wrappers. Each wrapper may have varying content.
-            product_wrappers = soup.select('div[class*="ProductListItem_productWrapper"]')
+            product_wrappers = soup.select('div[class*="ProductCard_productCard"]')
 
             # Placeholder for consolidated data frames
             consolidated_data = []
@@ -96,7 +97,7 @@ class BitibaETL(PetProductsETL):
             except Exception as e:
                 logger.error(f"Error scraping {url}: {e}")
 
-    def get_links(self, category: str, tag_name: str = "a", class_name: str = "ProductGroupCard_productGroupLink", attribute: str = "href") -> pd.DataFrame:
+    def get_links(self, category: str) -> pd.DataFrame:
         # Data validation on category
         cleaned_category = category.lower()
         if cleaned_category not in self.CATEGORIES:
@@ -105,20 +106,47 @@ class BitibaETL(PetProductsETL):
         # Construct link
         category_link = f"{self.BASE_URL}{cleaned_category}"
 
+        urls = []
+
         # Parse request response 
         soup = self.extract_from_url("GET", category_link)
+        if soup:
 
-        # Get all tags with matching class name
-        tags = soup.select(f'{tag_name}[class*="{class_name}"]')
+            # Get links from product group cards
+            product_group_cards = soup.select("a[class*='ProductGroupCard_productGroupLink']")
+            product_group_links = [self.BASE_URL + card["href"] for card in product_group_cards]
 
-        # Get all links; filter out specials
-        urls = [f"{self.BASE_URL}{tag[attribute]}" for tag in tags]
-        urls = [url for url in urls if category_link in url]
+            for product_group_link in product_group_links:
 
-        df = pd.DataFrame({"url": urls})
-        df.insert(0, "shop", self.SHOP)
+                current_url = product_group_link
 
-        return df
+                # Loop through all the pages of the category link
+                while True:
+
+                    soup = self.extract_from_url(current_url)
+                    if soup:
+                        
+                        products_list = soup.select("script[type*='application/ld+json']")
+                        if products_list:
+
+                            product_list_json = json.loads(products_list[-1].text)
+                            if "itemListElement"in product_list_json.keys():
+                                product_urls = pd.DataFrame(json.loads(products_list[-1].text)["itemListElement"])["url"].to_list()
+                                urls.extend(product_urls)
+
+                                # Repeat the process if there are new pages
+                                next_page_a = soup.find("a", attrs={"data-zta": "paginationNext"})
+                                if next_page_a:
+                                    current_url = next_page_a["href"]
+                                    continue
+                    
+                    # Break if there are no more pages; continue to next product group link
+                    break
+
+            df = pd.DataFrame({"url": urls})
+            df.insert(0, "shop", self.SHOP)
+
+            return df
 
     def run(self, db_conn: Engine, table_name: str):
 

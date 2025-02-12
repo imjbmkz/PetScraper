@@ -106,4 +106,4 @@ if __name__=="__main__":
 
     end_time = dt.datetime.now()
     duration = end_time - start_time
-    logger.info(f"{PROGRAM_NAME} has ended. Elapsed: {duration}")
+    logger.info(f"{PROGRAM_NAME} (shop={shop}) has ended. Elapsed: {duration}")
