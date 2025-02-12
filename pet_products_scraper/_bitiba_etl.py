@@ -123,9 +123,9 @@ class BitibaETL(PetProductsETL):
                 # Loop through all the pages of the category link
                 while True:
 
-                    soup = self.extract_from_url(current_url)
+                    soup = self.extract_from_url("GET", category_link)
                     if soup:
-                        
+
                         products_list = soup.select("script[type*='application/ld+json']")
                         if products_list:
 
