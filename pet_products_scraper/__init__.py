@@ -6,3 +6,4 @@ from ._jollyes_etl import JollyesETL
 from ._lilyskitchen_etl import LilysKitchenETL
 from ._bitiba_etl import BitibaETL
 from ._purina_etl import PurinaETL
+from ._petsupermarket_etl import PetSupermarketETL
