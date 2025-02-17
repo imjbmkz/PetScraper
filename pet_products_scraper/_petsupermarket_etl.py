@@ -74,6 +74,7 @@ class PetSupermarketETL(PetProductsETL):
                 df.insert(0, "description", description)
                 df.insert(0, "rating", rating)
                 df.insert(0, "name", product_title)
+                df.insert(0, "shop", self.SHOP)
 
                 return df
             

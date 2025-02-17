@@ -48,10 +48,10 @@ class PetProductsETL(ABC):
         before_sleep=before_sleep_log(logger, "WARNING"),
         reraise=True,
     )
-    def extract_from_url(self, method: str, url: str, params: dict = None, headers: dict = None, verify: bool = True) -> BeautifulSoup:
+    def extract_from_url(self, method: str, url: str, params: dict = None, data: dict = None, headers: dict = None, verify: bool = True) -> BeautifulSoup:
         try:
             # Parse request response
-            response = self.session.request(method=method, url=url, params=params, headers=headers, verify=verify)
+            response = self.session.request(method=method, url=url, params=params, data=data, headers=headers, verify=verify)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             logger.info(
