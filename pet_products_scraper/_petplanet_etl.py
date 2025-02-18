@@ -58,10 +58,8 @@ class PetPlanetETL(PetProductsETL):
                         response_new = self.session.get(url, verify=False)
                         soup_new = BeautifulSoup(response_new.content)
 
-                        div_prod = soup_new.find("div", class_="prod")
-                        if div_prod:
-                            price = div_prod.select_one("span[class*='fw-bold fs-4']")
-                        else:
+                        price = soup_new.select_one("span[class*='fw-bold fs-4']")
+                        if price is None:
                             price = soup_new.select_one("div[class*='fw-bold fs-4']")
 
                         original_price = price.select_one("span")
@@ -82,10 +80,8 @@ class PetPlanetETL(PetProductsETL):
                 else:
                     variant = None
 
-                    div_prod = soup.find("div", class_="prod")
-                    if div_prod:
-                        price = div_prod.select_one("span[class*='fw-bold fs-4']")
-                    else:
+                    price = soup.select_one("span[class*='fw-bold fs-4']")
+                    if price is None:
                         price = soup.select_one("div[class*='fw-bold fs-4']")
 
                     original_price = price.select_one("span")
