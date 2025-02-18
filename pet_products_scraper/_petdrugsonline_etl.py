@@ -19,9 +19,3 @@ class PetDrugsOnlineETL(PetProductsETL):
 
     def get_links(self, category: str) -> pd.DataFrame:
         pass
-
-    def run(self, db_conn: Engine, table_name: str):
-        pass
-
-    def refresh_links(self, db_conn: Engine, table_name: str):
-        pass

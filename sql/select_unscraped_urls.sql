@@ -1,1 +1,1 @@
-SELECT DISTINCT id, url FROM urls WHERE scrape_status<>'DONE' AND shop='{shop}';
+SELECT DISTINCT id, url FROM urls WHERE scrape_status<>'DONE' AND shop='{shop}' LIMIT 50;
