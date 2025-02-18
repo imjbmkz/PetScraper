@@ -7,9 +7,6 @@ from sqlalchemy import Engine
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
-SHOP = "LilysKitchen"
-BASE_URL = "https://www.lilyskitchen.co.uk"
-
 class LilysKitchenETL(PetProductsETL):
 
     def __init__(self):

@@ -6,10 +6,13 @@ from sqlalchemy import Engine
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
-SHOP = "DirectVet"
-BASE_URL = "https://www.direct-vet.co.uk"
-
 class DirectVetETL(PetProductsETL):
+
+    def __init__(self):
+        super().__init__()
+        self.SHOP = "DirectVet"
+        self.BASE_URL = "https://www.direct-vet.co.uk"
+        self.CATEGORIES = []
     
     def transform(self, soup: BeautifulSoup, url: str):
         pass

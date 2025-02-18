@@ -1,3 +1,11 @@
+"""
+Step 1: Make sure that you have a MySQL database running. Update the .env file as needed.
+Step 2: Activate virtual environment. 
+Step 3: Run get_links task: `python main.py get_links -s Zooplus`
+Step 3: Run scrape task: `python main.py scrape -s Zooplus`
+"""
+
+
 import os, sys, argparse
 import datetime as dt
 from loguru import logger
@@ -6,24 +14,32 @@ from pet_products_scraper import utils
 from pet_products_scraper import (
     PetProductsETL, 
     ZooplusETL, 
-    PetsAtHomeETL, 
-    PetPlanetETL, 
+    PetsAtHomeETL,  
     JollyesETL,
     LilysKitchenETL,
     BitibaETL,
-    PurinaETL,
     PetSupermarketETL,
+    PetPlanetETL,
+    PurinaETL,
+    DirectVetETL,
+    FishKeeperETL,
+    PetDrugsOnlineETL,
+    ViovetETL,
 )
 
 SHOPS = [
     "Zooplus", 
     "PetsAtHome", 
-    "PetPlanet",
     "Jollyes",
     "LilysKitchen",
     "Bitiba",
-    "Purina",
     "PetSupermarket",
+    "PetPlanet", # On going
+    "Purina", # Not Done
+    "DirectVet", # Not Done
+    "FishKeeper", # Not Done
+    "PetDrugsOnline", # Not Done
+    "Viovet", # Not Done
 ]
 
 PROGRAM_NAME = "Pet Products Scraper"
@@ -32,12 +48,17 @@ def run_etl(shop: str) -> PetProductsETL:
     factory = {
         "Zooplus": ZooplusETL(),
         "PetsAtHome": PetsAtHomeETL(),
-        "PetPlanet": PetPlanetETL(),
         "Jollyes": JollyesETL(),
         "LilysKitchen": LilysKitchenETL(),
         "Bitiba": BitibaETL(),
-        "Purina": PurinaETL(),
         "PetSupermarket": PetSupermarketETL(),
+
+        "PetPlanet": PetPlanetETL(),
+        "Purina": PurinaETL(),
+        "DirectVet": DirectVetETL(),
+        "FishKeeper": FishKeeperETL(),
+        "PetDrugsOnline": PetDrugsOnlineETL(),
+        "Viovet": ViovetETL(),
     }
 
     if shop in factory:

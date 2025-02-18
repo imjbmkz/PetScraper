@@ -60,7 +60,8 @@ class PetPlanetETL(PetProductsETL):
                 if soup:
 
                     for product in soup.find_all(class_="product-name"):
-                        urls.append(product["href"])
+                        p_url = self.BASE_URL + product["href"]
+                        p_url = urls.append(p_url)
                 
                     _viewstate = soup.find("input", {"name": '__VIEWSTATE'})
                     _viewstate_value = _viewstate.get('value') if _viewstate else None
