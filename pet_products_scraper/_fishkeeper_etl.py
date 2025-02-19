@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 from dotenv import load_dotenv
 from os import getenv
@@ -53,8 +54,76 @@ class FishKeeperETL(PetProductsETL):
             'x-algolia-application-id': '43KMJYQOGA',
         }
     
+    def get_feefo_rating(self, product_sku: str) -> str:
+        headers = {
+            'accept': '*/*',
+            'accept-language': 'en-US,en;q=0.7',
+            'content-type': 'application/json',
+            'origin': 'https://www.fishkeeper.co.uk',
+            'priority': 'u=1, i',
+            'referer': 'https://www.fishkeeper.co.uk/',
+            'sec-ch-ua': '"Not(A:Brand";v="99", "Brave";v="133", "Chromium";v="133"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'cross-site',
+            'sec-gpc': '1',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+        }
+
+        params = {
+            'merchant_identifier': 'maidenhead-aquatics',
+            'review_count': 'true',
+            'product_sku': product_sku,
+            '_': str(int(datetime.timestamp(datetime.now()) * 1000)),
+        }
+
+        response = self.session.get('https://api.feefo.com/api/10/products/ratings', params=params, headers=headers)
+        try:
+            response.raise_for_status()
+            products = response.json()["products"]
+            if products:
+                rating = products[0]["rating"]
+                rating = f"{rating}/5"
+                return rating
+
+        except Exception as e:
+            logger.error(f"Error in pulling feefo rating for product {product_sku} {e}")
+
     def transform(self, soup: BeautifulSoup, url: str):
-        pass
+        try:
+            if soup:
+
+                data = json.loads(soup.select_one("script[type*='application/ld+json']").text)
+                product_title = data["name"]
+                rating = self.get_feefo_rating(data["mpn"])
+                description = data["description"]
+                product_url = url.replace(self.BASE_URL, "")
+
+                data = json.loads(soup.select_one("script[type*='application/ld+json']").text)
+
+                data_offers = data["offers"]
+                if "offers" not in data_offers.keys():
+                    df = pd.DataFrame([data_offers])
+                    df["variant"] = None
+
+                else:
+                    df = pd.DataFrame(data_offers["offers"])
+                    df.rename({"name": "variant"}, axis=1, inplace=True)
+
+                df = df[["variant", "price"]]
+
+                df.insert(0, "url", product_url)
+                df.insert(0, "description", description)
+                df.insert(0, "rating", rating)
+                df.insert(0, "name", product_title)
+                df.insert(0, "shop", self.SHOP)
+
+                return df
+
+        except Exception as e:
+            logger.error(f"Error scraping {url}: {e}")
 
     def get_links(self, category: str) -> pd.DataFrame:
         
