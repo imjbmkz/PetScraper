@@ -1,8 +1,6 @@
 import re
-import time
-import requests
 import pandas as pd
-from datetime import datetime
+from datetime import datetime as dt
 from loguru import logger
 from bs4 import BeautifulSoup
 from sqlalchemy import Engine
@@ -26,7 +24,101 @@ class PetPlanetETL(PetProductsETL):
         ]
     
     def transform(self, soup: BeautifulSoup, url: str):
-        pass
+        if soup:
+
+            try:
+
+                # Get the product title, rating, and description
+                product_title = soup.find("h1").text
+                description = soup.find("div", id="nav-description").text
+                rating = soup.find("div", id="ContentPlaceHolder1_ctl00_Product1_ctl02_SummaryPanel")
+                if rating:
+                    rating_h3 = rating.find("h3")
+                    rating_value = f"{rating_h3.text}/5"
+                else:
+                    rating_value = None
+                product_url = url.replace(self.BASE_URL, "")
+
+                # Get product variants 
+                product_options = soup.select_one("div[class*='product-option-grid']")
+
+                # Placeholder for variant details
+                variants = []
+                prices = []
+                discounted_prices = []
+                discount_percentages = []
+
+                if product_options:
+                    product_variants = product_options.find_all("a")
+
+                    # Get the variant name, price, and discounted price
+                    for product_variant in product_variants:
+                        variant = product_variant.select_one("div[class*='h5']").text
+
+                        response_new = self.session.get(url, verify=False)
+                        soup_new = BeautifulSoup(response_new.content)
+
+                        price = soup_new.select_one("span[class*='fw-bold fs-4']")
+                        if price is None:
+                            price = soup_new.select_one("div[class*='fw-bold fs-4']")
+
+                        original_price = price.select_one("span")
+                        if original_price:
+                            original_price_amount = float(original_price.text.replace("£", ""))
+                            discounted_price_amount = float(price.contents[-1].strip().replace("£", ""))
+                            discount_percentage = (original_price_amount - discounted_price_amount) / original_price_amount
+                        else:
+                            original_price_amount = float(price.contents[-1].strip().replace("£", ""))
+                            discounted_price_amount = None
+                            discount_percentage = None
+
+                        variants.append(variant)
+                        prices.append(original_price_amount)
+                        discounted_prices.append(discounted_price_amount)
+                        discount_percentages.append(discount_percentage)
+
+                else:
+                    variant = None
+
+                    price = soup.select_one("span[class*='fw-bold fs-4']")
+                    if price is None:
+                        price = soup.select_one("div[class*='fw-bold fs-4']")
+
+                    original_price = price.select_one("span")
+                    if original_price:
+                        original_price_amount = float(original_price.text.replace("£", ""))
+                        discounted_price_amount = float(price.contents[-1].strip().replace("£", ""))
+                        discount_percentage = (original_price_amount - discounted_price_amount) / original_price_amount
+                    else:
+                        original_price_amount = float(price.contents[-1].strip().replace("£", ""))
+                        discounted_price_amount = None
+                        discount_percentage = None
+
+                    variants.append(variant)
+                    prices.append(original_price_amount)
+                    discounted_prices.append(discounted_price_amount)
+                    discount_percentages.append(discount_percentage)
+
+                # Compile the data acquired into dataframe
+                df = pd.DataFrame(
+                    {
+                        "variant": variants, 
+                        "price": prices,
+                        "discounted_price": discounted_prices,
+                        "discount_percentage": discount_percentages
+                    }
+                )
+                df.insert(0, "url", product_url)
+                df.insert(0, "description", description)
+                df.insert(0, "rating", rating_value)
+                df.insert(0, "name", product_title)
+                df.insert(0, "shop", self.SHOP)
+
+                return df
+            
+            except Exception as e:
+                logger.error(f"Error scraping {url}: {e}")
+
 
     def get_links(self, category: str) -> pd.DataFrame:
         # Data validation on category
@@ -120,5 +212,25 @@ class PetPlanetETL(PetProductsETL):
 
                 return df
 
+
     def run(self, db_conn: Engine, table_name: str):
-        pass
+        sql = get_sql_from_file("select_unscraped_urls.sql")
+        sql = sql.format(shop=self.SHOP)
+        df_urls = self.extract_from_sql(db_conn, sql)
+
+        for i, row in df_urls.iterrows():
+
+            pkey = row["id"]
+            url = row["url"]
+
+            now = dt.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            soup = self.extract_from_url("GET", url, verify=False)
+            df = self.transform(soup, url)
+
+            if df is not None:
+                self.load(df, db_conn, table_name)
+                update_url_scrape_status(db_conn, pkey, "DONE", now)
+
+            else:
+                update_url_scrape_status(db_conn, pkey, "FAILED", now)

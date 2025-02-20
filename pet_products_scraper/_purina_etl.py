@@ -55,6 +55,3 @@ class PurinaETL(PetProductsETL):
         df.insert(0, "shop", self.SHOP)
 
         return df
-
-    def run(self, db_conn: Engine, table_name: str):
-        pass
