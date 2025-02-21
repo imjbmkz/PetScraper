@@ -17,51 +17,55 @@ class PetDrugsOnlineETL(PetProductsETL):
         self.CATEGORIES = ['/pet-food', '/dog', '/cat', '/horse', '/small-pet']
 
     def transform(self, soup: BeautifulSoup, url: str):
-        product_name = soup.find(
-            'h1', class_="page-title").find('span').get_text()
-        product_url = url.replace(self.BASE_URL, "")
+        try:
+            product_name = soup.find(
+                'h1', class_="page-title").find('span').get_text()
+            product_url = url.replace(self.BASE_URL, "")
 
-        product_description = " ".join([p.get_text(strip=True) for p in soup.find('div', class_="product-attribute-description")
-                                        .find('div', class_="product-attribute-value")
-                                        .find_all(['p', 'strong'])])
-        product_rating = soup.find(
-            'span', class_='review-summary-rating-text').get_text(strip=True)
+            product_description = " ".join([p.get_text(strip=True) for p in soup.find('div', class_="product-attribute-description")
+                                            .find('div', class_="product-attribute-value")
+                                            .find_all(['p', 'strong'])])
+            product_rating = soup.find(
+                'span', class_='review-summary-rating-text').get_text(strip=True)
 
-        variant_wrapper = soup.find(
-            'ul', id='custom-select-attribute-results').find_all('li')
-        variants = []
-        prices = []
-        discounted_prices = []
-        discount_percentages = []
+            variant_wrapper = soup.find(
+                'ul', id='custom-select-attribute-results').find_all('li')
+            variants = []
+            prices = []
+            discounted_prices = []
+            discount_percentages = []
 
-        for variant in variant_wrapper:
-            variants.append(variant.find(
-                'span', class_="custom-option-col-label").get_text(strip=True))
-            prices.append(float(variant.find(
-                'span', class_="price-wrapper").find('span').get_text().replace('£', '')))
-            if (variant.find('span', class_="custom-option-col-inner").get_text(strip=True) != ""):
-                previous_price = float(variant.find('span', class_="custom-option-col-inner").find(
-                    'span', class_='vet-price').find('span', class_='price').get_text().replace('£', ''))
-                saving_price = float(variant.find('span', class_="custom-option-col-inner").find(
-                    'span', class_='saving-price').find('span', class_='price').get_text().replace('£', ''))
+            for variant in variant_wrapper:
+                variants.append(variant.find(
+                    'span', class_="custom-option-col-label").get_text(strip=True))
+                prices.append(float(variant.find(
+                    'span', class_="price-wrapper").find('span').get_text().replace('£', '')))
+                if (variant.find('span', class_="custom-option-col-inner").get_text(strip=True) != ""):
+                    previous_price = float(variant.find('span', class_="custom-option-col-inner").find(
+                        'span', class_='vet-price').find('span', class_='price').get_text().replace('£', ''))
+                    saving_price = float(variant.find('span', class_="custom-option-col-inner").find(
+                        'span', class_='saving-price').find('span', class_='price').get_text().replace('£', ''))
 
-                discount_percentage = round(
-                    (saving_price / previous_price) * 100, 2)
-                discounted_prices.append(saving_price)
-                discount_percentages.append(discount_percentage)
-            else:
-                discounted_prices.append(None)
-                discount_percentages.append(None)
+                    discount_percentage = round(
+                        (saving_price / previous_price) * 100, 2)
+                    discounted_prices.append(saving_price)
+                    discount_percentages.append(discount_percentage)
+                else:
+                    discounted_prices.append(None)
+                    discount_percentages.append(None)
 
-        df = pd.DataFrame({"variant": variants, "price": prices,
-                          "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
-        df.insert(0, "url", product_url)
-        df.insert(0, "description", product_description)
-        df.insert(0, "rating", product_rating)
-        df.insert(0, "name", product_name)
-        df.insert(0, "shop", self.SHOP)
+            df = pd.DataFrame({"variant": variants, "price": prices,
+                            "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df.insert(0, "url", product_url)
+            df.insert(0, "description", product_description)
+            df.insert(0, "rating", product_rating)
+            df.insert(0, "name", product_name)
+            df.insert(0, "shop", self.SHOP)
 
-        return df
+            return df
+        
+        except Exception as e:
+            logger.error(f"Error scraping {url}: {e}")
 
     def get_links(self, category: str) -> pd.DataFrame:
         cleaned_category = category.lower()
