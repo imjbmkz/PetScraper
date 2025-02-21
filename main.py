@@ -6,15 +6,17 @@ Step 3: Run scrape task: `python main.py scrape -s Zooplus`
 """
 
 
-import os, sys, argparse
+import os
+import sys
+import argparse
 import datetime as dt
 from loguru import logger
 from dotenv import load_dotenv
 from pet_products_scraper import utils
 from pet_products_scraper import (
-    PetProductsETL, 
-    ZooplusETL, 
-    PetsAtHomeETL,  
+    PetProductsETL,
+    ZooplusETL,
+    PetsAtHomeETL,
     JollyesETL,
     LilysKitchenETL,
     BitibaETL,
@@ -28,21 +30,22 @@ from pet_products_scraper import (
 )
 
 SHOPS = [
-    "Zooplus", 
-    "PetsAtHome", 
+    "Zooplus",
+    "PetsAtHome",
     "Jollyes",
     "LilysKitchen",
     "Bitiba",
     "PetSupermarket",
-    "PetPlanet", # On going
-    "Purina", # Not Done
-    "DirectVet", # Not Done
-    "FishKeeper", # Not Done
-    "PetDrugsOnline", # Not Done
-    "Viovet", # Not Done
+    "PetPlanet",  # On going
+    "Purina",  # Not Done
+    "DirectVet",  # Not Done
+    "FishKeeper",  # Not Done
+    "PetDrugsOnline",  # Not Done
+    "Viovet",  # Not Done
 ]
 
 PROGRAM_NAME = "Pet Products Scraper"
+
 
 def run_etl(shop: str) -> PetProductsETL:
     factory = {
@@ -64,18 +67,22 @@ def run_etl(shop: str) -> PetProductsETL:
     if shop in factory:
         return factory[shop]
     else:
-        raise ValueError(f"Shop {shop} is not supported. Please pass a valid shop.")
+        raise ValueError(
+            f"Shop {shop} is not supported. Please pass a valid shop.")
+
 
 parser = argparse.ArgumentParser(
     prog=PROGRAM_NAME,
     description="Scrape product details from various pet shops."
 )
 
-parser.add_argument("task", choices=["get_links", "scrape"], help="Identify the task to be executed. get_links=get links from registered shops; scrape=scrape products.")
-parser.add_argument("-s", "--shop", choices=SHOPS, help="Select a shop to scrape. Default: all shops.")
+parser.add_argument("task", choices=[
+                    "get_links", "scrape"], help="Identify the task to be executed. get_links=get links from registered shops; scrape=scrape products.")
+parser.add_argument("-s", "--shop", choices=SHOPS,
+                    help="Select a shop to scrape. Default: all shops.")
 args = parser.parse_args()
 
-if __name__=="__main__":
+if __name__ == "__main__":
 
     start_time = dt.datetime.now()
 
@@ -107,14 +114,14 @@ if __name__=="__main__":
     shop = args.shop
     client = run_etl(shop)
 
-    if task=="get_links":
+    if task == "get_links":
         utils.execute_query(engine, "TRUNCATE TABLE stg_urls;")
         client.refresh_links(engine, "stg_urls")
 
         sql = utils.get_sql_from_file("insert_into_urls.sql")
         utils.execute_query(engine, sql)
 
-    elif task=="scrape":
+    elif task == "scrape":
         utils.execute_query(engine, "TRUNCATE TABLE stg_pet_products;")
         client.run(engine, "stg_pet_products")
 
@@ -124,7 +131,8 @@ if __name__=="__main__":
         sql = utils.get_sql_from_file("insert_into_pet_product_variants.sql")
         utils.execute_query(engine, sql)
 
-        sql = utils.get_sql_from_file("insert_into_pet_product_variant_prices.sql")
+        sql = utils.get_sql_from_file(
+            "insert_into_pet_product_variant_prices.sql")
         utils.execute_query(engine, sql)
 
     end_time = dt.datetime.now()
