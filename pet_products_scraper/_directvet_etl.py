@@ -146,19 +146,21 @@ class DirectVetETL(PetProductsETL):
                     discount_percentages.append(None)
         else:
             variant_info = ''
-            if (soup.find('div', id="short_description_content").find('h2')):
-                variant_info = soup.find('div', id="short_description_content").find(
-                    'h2').get_text(strip=True).replace('- ', '').replace('-', '').strip()
-            elif (soup.find('div', id="short_description_content").find('p')):
-                if (soup.find('div', id="short_description_content").find_all('p')[0]):
-                    variant_info = soup.find('div', id="short_description_content").find_all(
-                        'p')[0].get_text(strip=True).replace('- ', '').replace('-', '').strip()
-                elif (soup.find('div', id="short_description_content").find_all('p')[1]):
-                    variant_info = soup.find('div', id="short_description_content").find_all(
-                        'p')[1].get_text(strip=True).replace('- ', '').replace('-', '').strip()
-                elif (soup.find('div', id="short_description_content").find_all('p')[2]):
-                    variant_info = soup.find('div', id="short_description_content").find_all(
-                        'p')[2].get_text(strip=True).replace('- ', '').replace(' -', '').strip()
+
+            description_div = soup.find('div', id="short_description_content")
+
+            if description_div:
+                h2_tag = description_div.find('h2')
+                if h2_tag:
+                    variant_info = h2_tag.get_text(strip=True).replace(
+                        '- ', '').replace('-', '').strip()
+                else:
+                    p_tags = description_div.find_all('p')
+                    if p_tags:
+                        variant_info = p_tags[-1].get_text(strip=True).replace(
+                            '- ', '').replace('-', '').strip()
+                    else:
+                        variant_info = None
             else:
                 variant_info = None
 
