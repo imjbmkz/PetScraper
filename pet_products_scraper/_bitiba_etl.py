@@ -23,7 +23,6 @@ class BitibaETL(PetProductsETL):
         try:
 
             if soup:
-            
                 product_data_list = soup.select("script[type*='application/ld+json']")
                 if product_data_list:
                     product_data = json.loads(product_data_list[0].text)
@@ -42,17 +41,47 @@ class BitibaETL(PetProductsETL):
                     discounted_prices = []
                     discount_percentages = []
 
-                    for offer in product_data["offers"]:
+                    variants_list = soup.select_one("div[class*='VariantList_variantList']")
+                    if variants_list:
+                        variant_hopps = variants_list.select("div[data-hopps*='Variant']")
+                        for variant_hopp in variant_hopps:
+                            variant = variant_hopp.select_one("span[class*='VariantDescription_description']").text
+                            
+                            discount_checker = variant_hopp.select_one("span[class*='z-price__prepend']")
+                            if discount_checker:
+                                price = float(variant_hopp.select_one("span[class*='z-price__note']").text.replace("individually priced £", ""))
+                                discounted_price = float(variant_hopp.select_one("span[class*='z-price__amount']").text.replace("£", ""))
+                                discount_percent = (price - discounted_price) / price
 
-                        reference_value = offer["priceSpecification"]["referenceQuantity"]["value"]
-                        reference_unit = offer["priceSpecification"]["referenceQuantity"]["unitCode"]
-                        variant = f"{reference_value} {reference_unit}"
-                        price = offer["priceSpecification"]["price"]
+                            else:
+                                price = float(variant_hopp.select_one("span[class*='z-price__amount']").text.replace("£", ""))
+                                discounted_price = None
+                                discount_percent = None
+
+                            variants.append(variant)
+                            prices.append(price)
+                            discounted_prices.append(discounted_price)
+                            discount_percentages.append(discount_percent)
+
+                    else: 
+                        variant = soup.select_one("div[data-zta*='ProductTitle__Subtitle']").text
+                        discount_checker = soup.select_one("span[class*='z-price__prepend']")
+                        if discount_checker:
+                            price = float(soup.select_one("span[class*='z-price__note']").text.replace("RRP* £", ""))
+                            discounted_price = float(soup.select_one("span[class*='z-price__amount']").text.replace("£", ""))
+                            discount_percent = (price - discounted_price) / price
+
+                        else:
+                            price = float(soup.select_one("span[class*='z-price__amount']").text.replace("£", ""))
+                            discounted_price = None
+                            discount_percent = None
 
                         variants.append(variant)
                         prices.append(price)
+                        discounted_prices.append(discounted_price)
+                        discount_percentages.append(discount_percent)
 
-                    df = pd.DataFrame({"variant": variants, "price": prices})
+                    df = pd.DataFrame({"variant": variants, "price": prices, "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
                     df.insert(0, "url", product_url)
                     df.insert(0, "description", description)
                     df.insert(0, "rating", rating)
