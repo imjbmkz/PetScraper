@@ -1,3 +1,4 @@
+import re
 import json
 import pandas as pd
 from datetime import datetime
@@ -41,6 +42,8 @@ class BitibaETL(PetProductsETL):
                     discounted_prices = []
                     discount_percentages = []
 
+                    pattern = r"^.*£"
+
                     variants_list = soup.select_one("div[class*='VariantList_variantList']")
                     if variants_list:
                         variant_hopps = variants_list.select("div[data-hopps*='Variant']")
@@ -49,12 +52,12 @@ class BitibaETL(PetProductsETL):
                             
                             discount_checker = variant_hopp.select_one("span[class*='z-price__prepend']")
                             if discount_checker:
-                                price = float(variant_hopp.select_one("span[class*='z-price__note']").text.replace("individually priced £", ""))
-                                discounted_price = float(variant_hopp.select_one("span[class*='z-price__amount']").text.replace("£", ""))
+                                price = float(re.sub(pattern, "", variant_hopp.select_one("span[class*='z-price__note']").text))
+                                discounted_price = float(re.sub(pattern, "", variant_hopp.select_one("span[class*='z-price__amount']").text))
                                 discount_percent = (price - discounted_price) / price
 
                             else:
-                                price = float(variant_hopp.select_one("span[class*='z-price__amount']").text.replace("£", ""))
+                                price = float(re.sub(pattern, "", variant_hopp.select_one("span[class*='z-price__amount']").text))
                                 discounted_price = None
                                 discount_percent = None
 
@@ -67,12 +70,12 @@ class BitibaETL(PetProductsETL):
                         variant = soup.select_one("div[data-zta*='ProductTitle__Subtitle']").text
                         discount_checker = soup.select_one("span[class*='z-price__prepend']")
                         if discount_checker:
-                            price = float(soup.select_one("span[class*='z-price__note']").text.replace("RRP* £", ""))
-                            discounted_price = float(soup.select_one("span[class*='z-price__amount']").text.replace("£", ""))
+                            price = float(re.sub(pattern, "", soup.select_one("span[class*='z-price__note']").text))
+                            discounted_price = float(re.sub(pattern, "", soup.select_one("span[class*='z-price__amount']").text))
                             discount_percent = (price - discounted_price) / price
 
                         else:
-                            price = float(soup.select_one("span[class*='z-price__amount']").text.replace("£", ""))
+                            price = float(re.sub(pattern, "", soup.select_one("span[class*='z-price__amount']").text))
                             discounted_price = None
                             discount_percent = None
 
