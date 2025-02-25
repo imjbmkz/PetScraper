@@ -27,6 +27,10 @@ from pet_products_scraper import (
     FishKeeperETL,
     PetDrugsOnlineETL,
     ViovetETL,
+    PetShopETL,
+    VetShopETL,
+    VetUKETL,
+    BurnsPetETL,
 )
 
 SHOPS = [
@@ -36,12 +40,16 @@ SHOPS = [
     "LilysKitchen",
     "Bitiba",
     "PetSupermarket",
-    "PetPlanet",  # On going
-    "Purina",  # Not Done
-    "DirectVet",  # Not Done
-    "FishKeeper",  # Not Done
-    "PetDrugsOnline",  # Not Done
-    "Viovet",  # Not Done
+    "PetPlanet",
+    "Purina",
+    "DirectVet",
+    "FishKeeper",
+    "PetDrugsOnline",
+    "Viovet",
+    "PetShop",
+    "VetShop",
+    "VetUK",
+    "BurnsPet",
 ]
 
 PROGRAM_NAME = "Pet Products Scraper"
@@ -55,13 +63,16 @@ def run_etl(shop: str) -> PetProductsETL:
         "LilysKitchen": LilysKitchenETL(),
         "Bitiba": BitibaETL(),
         "PetSupermarket": PetSupermarketETL(),
-
         "PetPlanet": PetPlanetETL(),
         "Purina": PurinaETL(),
         "DirectVet": DirectVetETL(),
         "FishKeeper": FishKeeperETL(),
         "PetDrugsOnline": PetDrugsOnlineETL(),
         "Viovet": ViovetETL(),
+        "PetShop": PetShopETL(),
+        "VetShop": VetShopETL(),
+        "VetUK": VetUKETL(),
+        "BurnsPet": BurnsPetETL(),
     }
 
     if shop in factory:

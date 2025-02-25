@@ -20,6 +20,10 @@ VALUES
     ,('DirectVet','https://www.direct-vet.co.uk/')
     ,('Fishkeeper','https://www.fishkeeper.co.uk/')
     ,('Purina','https://www.purina.co.uk/');
+    ,('PetShop', 'https://www.petshop.co.uk/')
+    ,('Vetshop','https://www.vetshop.co.uk/')
+    ,('VetUK','https://www.vetuk.co.uk/')
+    ,('Burnspet','https://burnspet.co.uk/')
 
 DROP TABLE IF EXISTS stg_urls;
 CREATE TABLE stg_urls (

@@ -11,3 +11,7 @@ from ._directvet_etl import DirectVetETL
 from ._fishkeeper_etl import FishKeeperETL
 from ._petdrugsonline_etl import PetDrugsOnlineETL
 from ._viovet_etl import ViovetETL
+from ._petshop import PetShopETL
+from ._vetshop import VetShopETL
+from ._vetuk import VetUKETL
+from ._burnspet import BurnsPetETL
