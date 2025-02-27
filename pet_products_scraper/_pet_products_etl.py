@@ -22,6 +22,7 @@ MAX_WAIT_BETWEEN_REQ = 2
 MIN_WAIT_BETWEEN_REQ = 0
 REQUEST_TIMEOUT = 30
 
+
 class PetProductsETL(ABC):
     def __init__(self):
         self.session = requests.Session()
@@ -40,7 +41,7 @@ class PetProductsETL(ABC):
         except Exception as e:
             logger.error(e)
             raise e
-    
+
     @retry(
         wait=wait_random(min=MIN_WAIT_BETWEEN_REQ, max=MAX_WAIT_BETWEEN_REQ),
         stop=stop_after_attempt(MAX_RETRIES),
@@ -51,23 +52,25 @@ class PetProductsETL(ABC):
     def extract_from_url(self, method: str, url: str, params: dict = None, data: dict = None, headers: dict = None, verify: bool = True) -> BeautifulSoup:
         try:
             # Parse request response
-            response = self.session.request(method=method, url=url, params=params, data=data, headers=headers, verify=verify)
+            response = self.session.request(
+                method=method, url=url, params=params, data=data, headers=headers, verify=verify)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             logger.info(
                 f"Successfully extracted data from {url} {response.status_code}"
             )
-            sleep_time = random.uniform(MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
+            sleep_time = random.uniform(
+                MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
             logger.info(f"Sleeping for {sleep_time} seconds...")
             return soup
-        
+
         except Exception as e:
             logger.error(f"Error in parsing {url}: {e}")
 
     def extract_from_sql(self, db_conn: Engine, sql: str) -> pd.DataFrame:
         try:
             return pd.read_sql(sql, db_conn)
-        
+
         except Exception as e:
             logger.error(e)
             raise e
@@ -80,12 +83,13 @@ class PetProductsETL(ABC):
         try:
             n = data.shape[0]
             data.to_sql(table_name, db_conn, if_exists="append", index=False)
-            logger.info(f"Successfully loaded {n} records to the {table_name}.")
+            logger.info(
+                f"Successfully loaded {n} records to the {table_name}.")
 
         except Exception as e:
             logger.error(e)
             raise e
-    
+
     def run(self, db_conn: Engine, table_name: str):
         sql = get_sql_from_file("select_unscraped_urls.sql")
         sql = sql.format(shop=self.SHOP)
@@ -111,7 +115,7 @@ class PetProductsETL(ABC):
     @abstractmethod
     def get_links(self) -> pd.DataFrame:
         pass
-    
+
     def refresh_links(self, db_conn: Engine, table_name: str):
         execute_query(db_conn, f"TRUNCATE TABLE {table_name};")
 
