@@ -43,9 +43,17 @@ class VetUKETL(PetProductsETL):
 
     def transform(self, soup: BeautifulSoup, url: str):
         try:
+            variant_wrapper = soup.find_all('div', class_="priceOption")
             if (soup.find(string="(Sold Out)")):
-                logger.info(f"Skipping {url} as it is sold out. ")
-                return None
+                variant_len = len(variant_wrapper)
+                variant_sold_out = 0
+                for variant in variant_wrapper:
+                    if variant.find('span', string="(Sold Out)"):
+                        variant_sold_out += 1
+
+                if variant_sold_out == variant_len:
+                    logger.info(f"Skipping {url} as it is sold out. ")
+                    return None
 
             product_name = soup.find(
                 'div', id="product-name").find('h1').get_text()
@@ -73,48 +81,62 @@ class VetUKETL(PetProductsETL):
             discounted_prices = []
             discount_percentages = []
 
-            if soup.find('select', id="attribute-selector"):
-                varaint_wrapper = soup.find_all('div', class_="priceOption")
-                for v in varaint_wrapper:
-                    price = 0
-                    variants.append(
-                        v.find('p', class_='displayOptionName').get_text())
-                    if (v.find('span', class_='retailPrice')):
-                        if "Not: £" in v.find('span', class_='retailPrice').get_text():
-                            price = v.find('span', class_='retailPrice').get_text().replace(
-                                'Now: £', '')
-                        else:
-                            price = v.find(
-                                'span', class_='retailPrice').get_text().replace('£', '')
+            for v in variant_wrapper:
+                if ("(Sold Out)" in v.find('span').get_text()):
+                    continue
 
-                        prices.append(price)
-                    else:
-                        prices.append(None)
+                variant_name = ''
+                price = 0
 
-                    if (v.find('span', class_="discountSaving")):
-                        discount_percentages.append(float(v.find(
-                            'span', class_="discountSaving").get_text().replace('Save: ', '').replace('%', '')))
-                    else:
-                        discount_percentages.append(None)
-
-                    if (v.find('span', class_="wasPrice")):
-                        discounted_prices.append(float(v.find('span', class_="wasPrice").get_text(
-                        ).replace('Was: £', '').replace('£', '')) - price)
-                    else:
-                        discounted_prices.append(None)
-
-            else:
-                if "(" in product_name and ")" in product_name:
-                    variants.append(product_name.split(
-                        '(')[1].replace(')', ''))
+                if soup.find('select', id="attribute-selector"):
+                    variant_name = v.find(
+                        'p', class_='displayOptionName').get_text()
                 else:
-                    variants.append(soup.find(
-                        'p', class_="manufacturer-name").get_text().replace('Manufacturer: ', ''))
+                    if "(" in product_name and ")" in product_name:
+                        variant_name = product_name.split(
+                            '(')[1].replace(')', '')
+                    else:
+                        variant_name = soup.find(
+                            'p', class_="manufacturer-name").get_text().replace('Manufacturer: ', '')
 
-                prices.append(
-                    float(soup.find('span', class_="retailPrice").get_text().replace('£', '')))
-                discounted_prices.append(None)
-                discount_percentages.append(None)
+                variants.append(variant_name)
+
+                if v.find('span', class_='retailPrice'):
+                    if "Now: £" in v.find('span', class_='retailPrice').get_text():
+                        price = v.find('span', class_='retailPrice').get_text().replace(
+                            'Now: £', '')
+                    else:
+                        price = v.find(
+                            'span', class_='retailPrice').get_text().replace('£', '')
+
+                    prices.append(price)
+                else:
+                    prices.append(None)
+
+                discount_percenrage = None
+                if v.find('span', class_="discountSaving"):
+                    if "Save: " in v.find('span', class_='discountSaving').get_text():
+                        discount_percenrage = v.find('span', class_='discountSaving').get_text(
+                        ).replace('Save: ', '').replace('%', '')
+                    else:
+                        discount_percenrage = v.find(
+                            'span', class_='discountSaving').get_text().replace('£', '')
+
+                discount_percentages.append(discount_percenrage)
+
+                discount_price = None
+                if v.find('span', class_="wasPrice"):
+                    if "Was: £" in v.find('span', class_='wasPrice').get_text():
+                        discount_price = v.find(
+                            'span', class_='wasPrice').get_text().replace('Was: £', '')
+                    else:
+                        discount_price = v.find(
+                            'span', class_='wasPrice').get_text().replace('£', '')
+
+                    discounted_prices.append(
+                        (float(discount_price) - float(price)))
+                else:
+                    discounted_prices.append(discount_price)
 
             df = pd.DataFrame({"variant": variants, "price": prices,
                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
