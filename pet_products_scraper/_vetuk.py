@@ -44,7 +44,7 @@ class VetUKETL(PetProductsETL):
     def transform(self, soup: BeautifulSoup, url: str):
         try:
             variant_wrapper = soup.find_all('div', class_="priceOption")
-            if (soup.find(string="(Sold Out)")):
+            if soup.find(string="(Sold Out)"):
                 variant_len = len(variant_wrapper)
                 variant_sold_out = 0
                 for variant in variant_wrapper:
@@ -82,7 +82,7 @@ class VetUKETL(PetProductsETL):
             discount_percentages = []
 
             for v in variant_wrapper:
-                if ("(Sold Out)" in v.find('span').get_text()):
+                if "(Sold Out)" in v.find('span').get_text():
                     continue
 
                 variant_name = ''
