@@ -133,8 +133,7 @@ class VetUKETL(PetProductsETL):
                         discount_price = v.find(
                             'span', class_='wasPrice').get_text().replace('£', '')
 
-                    discounted_prices.append(
-                        (float(discount_price) - float(price)))
+                    discounted_prices.append(float(discount_price))
                 else:
                     discounted_prices.append(discount_price)
 
