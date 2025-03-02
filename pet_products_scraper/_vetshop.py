@@ -1,5 +1,4 @@
-import re
-import json
+import requests
 import math
 import pandas as pd
 from datetime import datetime
@@ -103,13 +102,33 @@ class VetShopETL(PetProductsETL):
                 discount_price = float(soup.find_all(
                     'p', class_="item-views-blb-price-option-price")[1].get_text().replace('£', ''))
                 discount_percentage = (price - discount_price) / price
-            else:
-                price = float(soup.find_all(
-                    'p', class_="item-views-blb-price-option-price")[1].get_text().replace('£', ''))
 
-            prices.append(price)
-            discounted_prices.append(discount_price)
-            discount_percentages.append(discount_percentage)
+                prices.append(price)
+                discounted_prices.append(discount_price)
+                discount_percentages.append(discount_percentage)
+            else:
+                if soup.find('div', class_="item-views-blb-price-options-compare-price"):
+                    price = float(soup.find_all(
+                        'p', class_="item-views-blb-price-option-price")[1].get_text().replace('£', ''))
+                else:
+
+                    get_price_details = requests.get(
+                        f"https://www.vetshop.co.uk/api/items?c=3934951&country=GB&currency=GBP&fields=pricelevel4%2Cpricelevel4_formatted&fieldset=details&include=facets&language=en&n=3&pricelevel=4&url={product_url.replace('/', '')}")
+                    if get_price_details.status_code == 200:
+                        product_info = get_price_details.json()['items'][0]
+
+                        variants.clear()
+                        prices.clear()
+                        discounted_prices.clear()
+                        discount_percentages.clear()
+
+                        for product in product_info["matrixchilditems_detail"]:
+                            if product.get('pricelevel4') is not None:
+                                variants.append(product.get('custitem_bb1_size') or product.get(
+                                    'custitem_bb1_packsize'))
+                                prices.append(product['pricelevel4'])
+                                discounted_prices.append(None)
+                                discount_percentages.append(None)
 
             df = pd.DataFrame({"variant": variants, "price": prices,
                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
@@ -118,5 +137,7 @@ class VetShopETL(PetProductsETL):
             df.insert(0, "rating", product_rating)
             df.insert(0, "name", product_name)
             df.insert(0, "shop", self.SHOP)
+
+            return df
         except Exception as e:
             logger.error(f"Error scraping {url}: {e}")
