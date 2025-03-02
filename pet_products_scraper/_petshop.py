@@ -90,8 +90,12 @@ class PetShopETL(PetProductsETL):
             discount_price = None
             discount_percentage = None
 
-            if "-" in product_name:
+            if " - " in product_name:
                 variant = product_name.split(" - ")[1]
+            elif "- " in product_name:
+                variant = product_name.split("- ")[1]
+            elif " -" in product_name:
+                variant = product_name.split(" -")[1]
 
             variants.append(variant)
 
@@ -99,14 +103,16 @@ class PetShopETL(PetProductsETL):
                 f"https://www.petshop.co.uk/api/cacheable/items?c=3934951&country=GB&currency=GBP&fieldset=details&include=facets&language=en&n=2&pricelevel=5&url={product_url.replace('/', '')}&use_pcv=T")
             if get_price_details.status_code == 200:
                 product_info = get_price_details.json()['items'][0]
-                previous_price = product_info['pricelevel2']
-                current_price = product_info['pricelevel3']
+                if product_info.get('pricelevel2') is not None:
+                    previous_price = product_info['pricelevel2']
+                    current_price = product_info['pricelevel3']
 
-                price = previous_price
-                if previous_price != current_price:
-                    price = previous_price
-                    discount_price = current_price
-                    discount_percentage = (price - discount_price) / price
+                    if previous_price != current_price:
+                        price = previous_price
+                        discount_price = current_price
+                        discount_percentage = (price - discount_price) / price
+                else:
+                    price = product_info['onlinecustomerprice_detail']['onlinecustomerprice']
 
             prices.append(price)
             discounted_prices.append(discount_price)
