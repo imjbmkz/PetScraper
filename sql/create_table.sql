@@ -19,7 +19,7 @@ VALUES
     ,('Bitiba','https://www.bitiba.co.uk/')
     ,('DirectVet','https://www.direct-vet.co.uk/')
     ,('Fishkeeper','https://www.fishkeeper.co.uk/')
-    ,('Purina','https://www.purina.co.uk/');
+    ,('Purina','https://www.purina.co.uk/')
     ,('PetShop', 'https://www.petshop.co.uk/')
     ,('Vetshop','https://www.vetshop.co.uk/')
     ,('VetUK','https://www.vetuk.co.uk/')
