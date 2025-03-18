@@ -14,7 +14,19 @@ class TheRangeETL(PetProductsETL):
         super().__init__()
         self.SHOP = "TheRange"
         self.BASE_URL = "https://www.therange.co.uk"
-        self.CATEGORIES = []
+        self.CATEGORIES = [
+            "/pets/dogs/",
+            "/pets/cats/",
+            "/pets/small-pets/",
+            "/pets/aquatics/aguarium-food/",
+            "/pets/aquatics/aguarium-ornaments/",
+            "/pets/aquatics/aguarium-plants/",
+            "/pets/fish/garden-ponds/",
+            "/pets/fish/aquarium-filters/",
+            "/pets/fish/aquarium-treatments-and-fish-healthcare/",
+            "/pets/pet-food/",
+            "/pets/pet-beds/",
+        ]
     
     def transform(self, soup: BeautifulSoup, url: str):
         pass
