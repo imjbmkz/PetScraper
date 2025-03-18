@@ -31,6 +31,12 @@ from pet_products_scraper import (
     VetShopETL,
     VetUKETL,
     BurnsPetETL,
+    AsdaETL,
+    TheRangeETL,
+    OcadoETL,
+    HarringtonsETL,
+    BernPetFoodsETL,
+    PetsCornerETL,
 )
 
 SHOPS = [
@@ -50,6 +56,12 @@ SHOPS = [
     "VetShop",
     "VetUK",
     "BurnsPet",
+    "ASDAGroceries",
+    "TheRange",
+    "Ocado",
+    "Harringtons",
+    "BernPetFoods",
+    "PetsCorner",
 ]
 
 PROGRAM_NAME = "Pet Products Scraper"
@@ -73,6 +85,12 @@ def run_etl(shop: str) -> PetProductsETL:
         "VetShop": VetShopETL(),
         "VetUK": VetUKETL(),
         "BurnsPet": BurnsPetETL(),
+        "ASDAGroceries": AsdaETL(),
+        "TheRange": TheRangeETL(),
+        "Ocado": OcadoETL(),
+        "Harringtons": HarringtonsETL(),
+        "BernPetFoods": BernPetFoodsETL(),
+        "PetsCorner": PetsCornerETL(),
     }
 
     if shop in factory:

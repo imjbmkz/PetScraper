@@ -24,6 +24,12 @@ VALUES
     ,('Vetshop','https://www.vetshop.co.uk/')
     ,('VetUK','https://www.vetuk.co.uk/')
     ,('Burnspet','https://burnspet.co.uk/')
+    ,('ASDAGroceries','https://groceries.asda.com/')
+    ,('TheRange','https://www.therange.co.uk/')
+    ,('Ocado','https://www.ocado.com/')
+    ,('Harringtons','https://www.harringtonspetfood.com/')
+    ,('BernPetFoods','https://www.bernpetfoods.co.uk/')
+    ,('PetsCorner','https://www.petscorner.co.uk/ ')
 
 DROP TABLE IF EXISTS stg_urls;
 CREATE TABLE stg_urls (

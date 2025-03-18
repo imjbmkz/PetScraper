@@ -15,3 +15,9 @@ from ._petshop import PetShopETL
 from ._vetshop import VetShopETL
 from ._vetuk import VetUKETL
 from ._burnspet import BurnsPetETL
+from ._asda import AsdaETL
+from ._therange import TheRangeETL
+from ._ocado import OcadoETL
+from ._harringtons import HarringtonsETL
+from ._bernpetfoods import BernPetFoodsETL
+from ._petscorner import PetsCornerETL
