@@ -2,7 +2,7 @@ import requests
 import random
 import pandas as pd
 
-from datetime import datetime
+from datetime import datetime as dt
 from loguru import logger
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
@@ -144,7 +144,7 @@ class AsdaETL(PetProductsETL):
                 })
 
                 await page.goto(url, wait_until="domcontentloaded")
-                await page.wait_for_selector("#main-content", timeout=20000)
+                await page.wait_for_selector("#main-content", timeout=30000)
 
                 for _ in range(random.randint(3, 6)):
                     await page.mouse.wheel(0, random.randint(300, 700))
@@ -286,7 +286,7 @@ class AsdaETL(PetProductsETL):
 
             now = dt.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            soup = self.fetch_page(url)
+            soup = asyncio.run(self.extract_scrape_content(url))
             df = self.transform(soup, url)
 
             if df is not None:
