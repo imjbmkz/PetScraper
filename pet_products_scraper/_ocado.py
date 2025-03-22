@@ -190,11 +190,7 @@ class OcadoETL(PetProductsETL):
             product_url = url.replace(self.BASE_URL, "")
             product_rating = '0/5'
 
-            product_wrapper_soup = asyncio.run(
-                self.extract_scrape_content(url, '#reviews'))
-            reviews_section_wrapper = product_wrapper_soup.find(
-                'section', id='reviews')
-            product_rating_wrapper = reviews_section_wrapper.find(
+            product_rating_wrapper = soup.find('section', id='reviews').find(
                 'span', attrs={'itemprop': 'ratingValue'})
             if product_rating_wrapper is not None:
                 product_rating = product_rating_wrapper.get_text().strip() + '/5'
