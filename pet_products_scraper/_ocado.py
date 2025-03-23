@@ -185,8 +185,11 @@ class OcadoETL(PetProductsETL):
         try:
             product_name = soup.find(
                 'header', class_="bop-title").find('h1').get_text(strip=True)
-            product_description = soup.find(
-                'div', class_="gn-accordionElement__wrapper").find('div', class_="bop-info__content").get_text()
+            product_description = None
+            if soup.find('div', class_="gn-accordionElement__wrapper"):
+                product_description = soup.find(
+                    'div', class_="gn-accordionElement__wrapper").find('div', class_="bop-info__content").get_text()
+
             product_url = url.replace(self.BASE_URL, "")
             product_rating = '0/5'
 
@@ -205,8 +208,14 @@ class OcadoETL(PetProductsETL):
                                                                        class_="bop-catchWeight").get_text(strip=True)
 
             if soup.find('span', class_="bop-price__old"):
-                price = float(soup.find(
-                    'span', class_="bop-price__old").get_text(strip=True).replace('£', ""))
+                price_text = soup.find(
+                    'span', class_="bop-price__old").get_text(strip=True)
+                if '£' in price_text:
+                    price = float(soup.find(
+                        'span', class_="bop-price__old").get_text(strip=True).replace('£', ""))
+                else:
+                    price = float(soup.find(
+                        'span', class_="bop-price__old").get_text(strip=True).replace('p', "")) / 100
                 discounted_price = "{:.2f}".format(float(soup.find(
                     'h2', class_="bop-price__current").find('meta', attrs={'itemprop': 'price'}).get('content')))
                 discount_percentage = round(
