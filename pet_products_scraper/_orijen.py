@@ -14,7 +14,12 @@ class OrijenETL(PetProductsETL):
         super().__init__()
         self.SHOP = "Orijen"
         self.BASE_URL = "https://www.orijenpetfoods.co.uk"
-        self.CATEGORIES = []
+        self.CATEGORIES = [
+            "/product-category/dog-food/",
+            "/product-category/dog-food/puppy-food/",
+            "/product-category/cat-food/",
+            "/product-category/cat-food/kitten-food/",
+        ]
     
     def transform(self, soup: BeautifulSoup, url: str):
         pass
