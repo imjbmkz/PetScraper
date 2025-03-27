@@ -215,7 +215,7 @@ class TheRangeETL(PetProductsETL):
             df.insert(0, "shop", self.SHOP)
             return df
 
-        except (TypeError, KeyError):
+        except:
             logger.error(
                 f"Could not extract category details from {category_link}")
             return None
