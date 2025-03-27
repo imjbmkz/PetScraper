@@ -21,3 +21,11 @@ from ._ocado import OcadoETL
 from ._harringtons import HarringtonsETL
 from ._bernpetfoods import BernPetFoodsETL
 from ._petscorner import PetsCornerETL
+from ._orijen import OrijenETL
+from ._thepetexpress import ThePetExpressETL
+from ._petshoponline import PetShopOnlineETL
+from ._taylorpetfoods import TaylorPetFoodsETL
+from ._thenaturalpetstore import TheNaturalPetStoreETL
+from ._healthypetstore import HealthyPetStoreETL
+from ._farmandpetplace import FarmAndPetPlaceETL
+from ._naturesmenu import NaturesMenuETL

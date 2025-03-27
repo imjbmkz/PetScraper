@@ -37,6 +37,14 @@ from pet_products_scraper import (
     HarringtonsETL,
     BernPetFoodsETL,
     PetsCornerETL,
+    OrijenETL,
+    ThePetExpressETL,
+    PetShopOnlineETL,
+    TaylorPetFoodsETL,
+    TheNaturalPetStoreETL,
+    HealthyPetStoreETL,
+    FarmAndPetPlaceETL,
+    NaturesMenuETL,
 )
 
 SHOPS = [
@@ -62,6 +70,14 @@ SHOPS = [
     "Harringtons",
     "BernPetFoods",
     "PetsCorner",
+    "Orijen",
+    "ThePetExpress",
+    "PetShopOnline",
+    "TaylorPetFoods",
+    "TheNaturalPetStore",
+    "HealthyPetStore",
+    "FarmAndPetPlace",
+    "NaturesMenu",
 ]
 
 PROGRAM_NAME = "Pet Products Scraper"
@@ -91,6 +107,14 @@ def run_etl(shop: str) -> PetProductsETL:
         "Harringtons": HarringtonsETL(),
         "BernPetFoods": BernPetFoodsETL(),
         "PetsCorner": PetsCornerETL(),
+        "Orijen": OrijenETL(),
+        "ThePetExpress": ThePetExpressETL(),
+        "PetShopOnline": PetShopOnlineETL(),
+        "TaylorPetFoods": TaylorPetFoodsETL(),
+        "TheNaturalPetStore": TheNaturalPetStoreETL(),
+        "HealthyPetStore": HealthyPetStoreETL(),
+        "FarmAndPetPlace": FarmAndPetPlaceETL(),
+        "NaturesMenu": NaturesMenuETL(),
     }
 
     if shop in factory:

@@ -25,4 +25,17 @@ class OrijenETL(PetProductsETL):
         pass
 
     def get_links(self, category: str) -> pd.DataFrame:
-        pass
+        if category not in self.CATEGORIES:
+            raise ValueError(
+                f"Invalid category. Value must be in {self.CATEGORIES}")
+        
+        url = self.BASE_URL+category
+        soup = self.extract_from_url("GET", url)
+
+        if soup:
+            atags = soup.find_all("a", "product-item__bg")
+            urls = [atag["href"] for atag in atags]
+
+            df = pd.DataFrame({"url": urls})
+            df.insert(0, "shop", self.SHOP)
+            return df
