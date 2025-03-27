@@ -29,7 +29,15 @@ VALUES
     ,('Ocado','https://www.ocado.com/')
     ,('Harringtons','https://www.harringtonspetfood.com/')
     ,('BernPetFoods','https://www.bernpetfoods.co.uk/')
-    ,('PetsCorner','https://www.petscorner.co.uk/ ')
+    ,('PetsCorner','https://www.petscorner.co.uk/')
+    ,('Orijen','https://www.orijenpetfoods.co.uk/')
+    ,('ThePetExpress','https://www.thepetexpress.co.uk/')
+    ,('PetShopOnline','https://pet-shop-online.co.uk/')
+    ,('TaylorPetFoods','https://www.taylorspetfoods.co.uk/')
+    ,('TheNaturalPetStore','https://www.thenaturalpetstore.co.uk/')
+    ,('HealthyPetStore','https://healthypetstore.co.uk/')
+    ,('FarmAndPetPlace','https://www.farmandpetplace.co.uk/')
+    ,('NaturesMenu','https://www.naturesmenu.co.uk/')
 
 DROP TABLE IF EXISTS stg_urls;
 CREATE TABLE stg_urls (
