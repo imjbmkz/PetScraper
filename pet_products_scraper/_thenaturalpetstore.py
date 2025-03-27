@@ -14,7 +14,25 @@ class TheNaturalPetStoreETL(PetProductsETL):
         super().__init__()
         self.SHOP = "TheNaturalPetStore"
         self.BASE_URL = "https://www.thenaturalpetstore.co.uk"
-        self.CATEGORIES = []
+        self.CATEGORIES = [
+            "/collections/dog-food",
+            "/collections/dog-treats",
+            "/collections/dog-toys",
+            "/collections/dog-accessories",
+            "/collections/dog-health",
+            "/collections/cat-food",
+            "/collections/cat-treats",
+            "/collections/cat-toys",
+            "/collections/cat-accessories",
+            "/collections/cat-health",
+            "/collections/cat-litter",
+            "/collections/small-pet-food",
+            "/collections/small-pet-treats",
+            "/collections/small-pet-accessories",
+            "/collections/bird-food",
+            "/collections/bird-toys",
+            "/collections/bird-treats",
+        ]
     
     def transform(self, soup: BeautifulSoup, url: str):
         pass
