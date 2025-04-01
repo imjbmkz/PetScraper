@@ -13,7 +13,5 @@ SELECT DISTINCT
     ,a.url
 FROM stg_pet_products a 
 LEFT JOIN shops b ON b.name=a.shop
-WHERE a.url NOT IN (
-    SELECT DISTINCT url
-    FROM pet_products
-); 
+LEFT JOIN pet_products c ON c.url=a.url AND c.shop_id=b.id
+WHERE c.id IS NULL

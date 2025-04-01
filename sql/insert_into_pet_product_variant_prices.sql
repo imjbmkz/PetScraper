@@ -12,11 +12,6 @@ SELECT DISTINCT
     ,a.discounted_price
     ,a.discount_percentage
 FROM stg_pet_products a 
-LEFT JOIN pet_product_variants b
-    ON CONCAT(b.url,IFNULL(b.variant,'')) = CONCAT(a.url,IFNULL(a.variant,''))
-
--- Insert only product variants that are not yet available in the table
-WHERE b.id NOT IN (
-    SELECT product_variant_id
-    FROM pet_product_variant_prices
-)
+LEFT JOIN pet_product_variants b ON b.url=a.url AND IFNULL(b.variant,'')=IFNULL(a.variant,'')
+LEFT JOIN pet_product_variant_prices c ON c.product_variant_id=b.id AND c.shop_id=b.shop_id
+WHERE c.id IS NULL
