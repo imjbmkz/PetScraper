@@ -126,7 +126,7 @@ class FarmAndPetPlaceETL(PetProductsETL):
             '/shop/products/pet/dog/dog-chews-and-dog-treats/munchy-dog-chews/page-1.html',
             '/shop/products/pet/dog/dog-chews-and-dog-treats/health-joint-and-mobility/page-1.html',
             '/shop/products/pet/dog/dog-chews-and-dog-treats/novelty-dog-treats/page-1.html',
-            '/shop/products/pet/dog/dog-summer/page-1.html',
+            '/shop/products/pet/dog/dog-summer/cooling/page-1.html',
             '/shop/products/pet/dog/dog-training/berts-bows/page-1.html',
             '/shop/products/pet/dog/dog-training/toilet-training/page-1.html',
             '/shop/products/pet/dog/dog-training/dog-muzzles/page-1.html',

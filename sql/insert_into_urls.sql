@@ -4,11 +4,9 @@ INSERT INTO urls (
     ,updated_date
 )
 SELECT DISTINCT
-	shop
-    ,url
-    ,updated_date
+	a.shop
+    ,a.url
+    ,a.updated_date
 FROM stg_urls a 
-WHERE url NOT IN (
-    SELECT DISTINCT url
-    FROM urls
-); 
+LEFT JOIN urls b ON b.url=a.url
+WHERE b.id IS NULL;
