@@ -64,6 +64,7 @@ CREATE TABLE stg_pet_products (
     ,description varchar(1000) CHARACTER SET utf8mb4
     ,url varchar(255) CHARACTER SET utf8mb4
     ,variant varchar(255) CHARACTER SET utf8mb4
+    ,image_urls varchar(1000) CHARACTER SET utf8mb4
     ,price decimal(10, 4)
     ,discounted_price decimal(10, 4)
     ,discount_percentage decimal(10, 4)
@@ -77,6 +78,7 @@ CREATE TABLE pet_product_variants (
     ,inserted_date datetime DEFAULT now()
     ,url varchar(255) CHARACTER SET utf8mb4
     ,variant varchar(255) CHARACTER SET utf8mb4
+    ,image_urls varchar(1000) CHARACTER SET utf8mb4
 );
 
 DROP TABLE IF EXISTS pet_product_variant_prices;
