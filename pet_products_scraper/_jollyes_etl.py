@@ -7,18 +7,20 @@ from sqlalchemy import Engine
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
+
 class JollyesETL(PetProductsETL):
 
     def __init__(self):
         super().__init__()
         self.SHOP = "Jollyes"
         self.BASE_URL = "https://www.jollyes.co.uk"
-        self.CATEGORIES = ["dog", "cat", "small-pet", "bird-wildlife", "fish", "reptile"]
-    
+        self.CATEGORIES = ["dog", "cat", "small-pet",
+                           "bird-wildlife", "fish", "reptile"]
+
     def transform(self, soup: BeautifulSoup, url: str) -> pd.DataFrame:
         try:
-
-            data = json.loads(soup.select_one("section[class*='lazy-review-section']").select_one("script[type*='application']").text)
+            data = json.loads(soup.select_one(
+                "section[class*='lazy-review-section']").select_one("script[type*='application']").text)
 
             # Get data from parsed JSON
             product_title = data["name"]
@@ -42,14 +44,15 @@ class JollyesETL(PetProductsETL):
                     "description": description,
                     "url": product_url,
                     "price": price,
-                    # "variant": None, # each product collected url is a variant
-                    # "discounted_price": None,
-                    # "discount_percentage": None
+                    "image_urls": ', '.join(data['image']),
+                    "variant": None,  # each product collected url is a variant
+                    "discounted_price": None,
+                    "discount_percentage": None
                 }, index=[0]
             )
 
             return df
-        
+
         except Exception as e:
             logger.error(f"Error scraping {url}: {e}")
 
@@ -57,8 +60,9 @@ class JollyesETL(PetProductsETL):
         # Data validation on category
         cleaned_category = category.lower()
         if cleaned_category not in self.CATEGORIES:
-            raise ValueError(f"Invalid category. Value must be in {self.CATEGORIES}")
-        
+            raise ValueError(
+                f"Invalid category. Value must be in {self.CATEGORIES}")
+
         # Parse the base url of the category
         category_link = f"{self.BASE_URL}/{cleaned_category}.html"
         soup = self.extract_from_url("GET", category_link)
@@ -88,13 +92,16 @@ class JollyesETL(PetProductsETL):
 
                     if soup:
 
-                        # Get product tiles and get the href values 
-                        product_tiles = soup.select("div[class*='product-tile']")
+                        # Get product tiles and get the href values
+                        product_tiles = soup.select(
+                            "div[class*='product-tile']")
                         for product_tile in product_tiles:
-                            urls.append(self.BASE_URL + product_tile.select_one("a")["href"])
+                            urls.append(self.BASE_URL +
+                                        product_tile.select_one("a")["href"])
 
                         # Check if this element is available
-                        progress = soup.select_one("div[class*='progress-row w-100']")
+                        progress = soup.select_one(
+                            "div[class*='progress-row w-100']")
                         if progress:
                             n += 1
                             continue
@@ -107,25 +114,3 @@ class JollyesETL(PetProductsETL):
             df.insert(0, "shop", self.SHOP)
 
             return df
-
-    def run(self, db_conn: Engine, table_name: str):
-        sql = get_sql_from_file("select_unscraped_urls.sql")
-        sql = sql.format(shop=self.SHOP)
-        df_urls = self.extract_from_sql(db_conn, sql)
-
-        for i, row in df_urls.iterrows():
-
-            pkey = row["id"]
-            url = row["url"]
-
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            soup = self.extract_from_url("GET", url)
-            df = self.transform(soup, url)
-
-            if df is not None:
-                self.load(df, db_conn, table_name)
-                update_url_scrape_status(db_conn, pkey, "DONE", now)
-
-            else:
-                update_url_scrape_status(db_conn, pkey, "FAILED", now)

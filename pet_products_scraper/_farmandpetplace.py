@@ -260,7 +260,6 @@ class FarmAndPetPlaceETL(PetProductsETL):
             '/shop/products/pet/bird/nesting/page-1.html',
             '/shop/products/pet/bird/sand-sheets-and-grits/page-1.html',
             '/shop/products/pet/bird/feeders-and-drinkers/page-1.html',
-            '/shop/products/pet/bird/bird-cages-and-stands/page-1.html',
             '/shop/products/pet/bird/perches/page-1.html',
             '/shop/products/pet/bird/toys-for-birds/page-1.html',
             '/shop/products/pet/bird/medication-and-health-for-birds/hygiene-for-birds/page-1.html',

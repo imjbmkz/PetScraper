@@ -85,18 +85,18 @@ PROGRAM_NAME = "Pet Products Scraper"
 
 def run_etl(shop: str) -> PetProductsETL:
     factory = {
-        "Zooplus": ZooplusETL(),
-        "PetsAtHome": PetsAtHomeETL(),
-        "Jollyes": JollyesETL(),
-        "LilysKitchen": LilysKitchenETL(),
-        "Bitiba": BitibaETL(),
-        "PetSupermarket": PetSupermarketETL(),
-        "PetPlanet": PetPlanetETL(),
-        "Purina": PurinaETL(),
-        "DirectVet": DirectVetETL(),
-        "FishKeeper": FishKeeperETL(),
-        "PetDrugsOnline": PetDrugsOnlineETL(),
-        "Viovet": ViovetETL(),
+        "Zooplus": ZooplusETL(),  # Pending
+        "PetsAtHome": PetsAtHomeETL(),  # Done
+        "Jollyes": JollyesETL(),  # Done
+        "LilysKitchen": LilysKitchenETL(),  # Done
+        "Bitiba": BitibaETL(),  # Pending
+        "PetSupermarket": PetSupermarketETL(),  # Done
+        "PetPlanet": PetPlanetETL(),  # Done
+        "Purina": PurinaETL(),  # Done
+        "DirectVet": DirectVetETL(),  # Done
+        "FishKeeper": FishKeeperETL(),  # Done
+        "PetDrugsOnline": PetDrugsOnlineETL(),  # Done
+        "Viovet": ViovetETL(),  # Done
         "PetShop": PetShopETL(),
         "VetShop": VetShopETL(),
         "VetUK": VetUKETL(),
