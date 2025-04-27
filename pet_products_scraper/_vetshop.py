@@ -84,6 +84,7 @@ class VetShopETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             discount_price = None
             discount_percentage = None
@@ -91,7 +92,10 @@ class VetShopETL(PetProductsETL):
             if "-" in product_name:
                 variant = product_name.split("-")[1]
 
+            product_img = soup.find('meta', attrs={'name': "og:image"}).get(
+                'content').replace('%2520', '%20')
             variants.append(variant)
+            image_urls.append(product_img)
 
             was_price = soup.find(
                 'div', class_="item-views-blb-price-options-compare-price")
@@ -111,7 +115,6 @@ class VetShopETL(PetProductsETL):
                     price = float(soup.find_all(
                         'p', class_="item-views-blb-price-option-price")[1].get_text().replace('£', ''))
                 else:
-
                     get_price_details = requests.get(
                         f"https://www.vetshop.co.uk/api/items?c=3934951&country=GB&currency=GBP&fields=pricelevel4%2Cpricelevel4_formatted&fieldset=details&include=facets&language=en&n=3&pricelevel=4&url={product_url.replace('/', '')}")
                     if get_price_details.status_code == 200:
@@ -129,9 +132,15 @@ class VetShopETL(PetProductsETL):
                                 prices.append(product['pricelevel4'])
                                 discounted_prices.append(None)
                                 discount_percentages.append(None)
+                                image_urls.append(product_img)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                              "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)

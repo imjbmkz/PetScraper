@@ -3,12 +3,14 @@ INSERT INTO pet_product_variants (
     ,shop_id
     ,url
     ,variant
+    ,image_urls
 )
 SELECT DISTINCT 
     b.id
     ,b.shop_id
     ,a.url
     ,a.variant
+    ,a.image_urls
 FROM stg_pet_products a 
 LEFT JOIN pet_products b ON b.url=a.url
 LEFT JOIN pet_product_variants c 

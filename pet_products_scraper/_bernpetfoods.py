@@ -59,8 +59,9 @@ class BernPetFoodsETL(PetProductsETL):
                             'display_price')
                         discount_percentage = "{:.2f}".format(
                             (price - discounted_price) / price)
-                        
-                    div_img = soup.find("div", class_="woocommerce-product-gallery__image")
+
+                    div_img = soup.find(
+                        "div", class_="woocommerce-product-gallery__image")
                     image_url = None
                     if div_img:
                         image_url = div_img.find("img")["src"]
@@ -79,10 +80,13 @@ class BernPetFoodsETL(PetProductsETL):
                 discounted_prices.append(None)
                 discount_percentages.append(None)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                               "discounted_price": discounted_prices, 
-                               "discount_percentage": discount_percentages,
-                               "image_urls": image_urls})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)

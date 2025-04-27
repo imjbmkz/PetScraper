@@ -49,11 +49,14 @@ class NaturesMenuETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             price_info = soup.find('button', class_="add-to-cart")
 
             if price_info.get('data-item-id-bundle') == 'null':
                 variants.append(price_info.get('data-item-variant'))
+                image_urls.append(
+                    soup.find('meta', attrs={'property': "og:image"}).get('content'))
                 prices.append(price_info.get('data-item-price'))
                 discounted_prices.append(None)
                 discount_percentages.append(None)
@@ -62,11 +65,18 @@ class NaturesMenuETL(PetProductsETL):
                     'data-item-variant'), price_info.get('data-item-variant-bundle')]
                 prices = [price_info.get(
                     'data-item-price'), price_info.get('data-item-price')]
+                image_urls = [soup.find('meta', attrs={'property': "og:image"}).get(
+                    'content'), soup.find('meta', attrs={'property': "og:image"}).get('content')]
                 discounted_prices = [None, None]
                 discount_percentages = [None, None]
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)

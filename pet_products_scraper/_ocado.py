@@ -202,6 +202,7 @@ class OcadoETL(PetProductsETL):
             price = None
             discounted_price = None
             discount_percentage = None
+            image_urls = None
 
             if soup.find('header', class_="bop-title").find('span', class_="bop-catchWeight"):
                 variant = soup.find('header', class_="bop-title").find('span',
@@ -224,6 +225,9 @@ class OcadoETL(PetProductsETL):
                 price = "{:.2f}".format(float(soup.find(
                     'h2', class_="bop-price__current").find('meta', attrs={'itemprop': 'price'}).get('content')))
 
+            image_urls = self.BASE_URL + soup.find(
+                'meta', attrs={'property': "og:image"}).get('content')
+
             df = pd.DataFrame([{
                 "url": product_url,
                 "description": product_description,
@@ -233,7 +237,8 @@ class OcadoETL(PetProductsETL):
                 "variant": variant,
                 "price": price,
                 "discounted_price": discounted_price,
-                "discount_percentage": discount_percentage
+                "discount_percentage": discount_percentage,
+                "image_urls": image_urls
             }])
 
             return df

@@ -1,3 +1,4 @@
+import re
 import requests
 import random
 import pandas as pd
@@ -115,7 +116,7 @@ class AsdaETL(PetProductsETL):
         before_sleep=before_sleep_log(logger, "WARNING"),
         reraise=True,
     )
-    async def extract_scrape_content(self, url):
+    async def extract_scrape_content(self, url, selector):
         soup = None
         browser = None
         try:
@@ -128,8 +129,6 @@ class AsdaETL(PetProductsETL):
                 browser = await p.chromium.launch(**browser_args)
                 context = await browser.new_context(
                     user_agent=UserAgent().random,
-                    viewport={"width": random.randint(
-                        1200, 1600), "height": random.randint(800, 1200)},
                     locale="en-US"
                 )
 
@@ -137,14 +136,14 @@ class AsdaETL(PetProductsETL):
 
                 await page.set_extra_http_headers({
                     "User-Agent": UserAgent().random,
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                     "Accept-Language": "en-US,en;q=0.9",
-                    "Origin": "https://groceries.asda.com",
-                    "Referer": url,
+                    "Referer": "https://groceries.asda.com",
                     "Request-Origin": "gi"
                 })
 
                 await page.goto(url, wait_until="domcontentloaded")
-                await page.wait_for_selector("#main-content", timeout=30000)
+                await page.wait_for_selector(selector, timeout=30000)
 
                 for _ in range(random.randint(3, 6)):
                     await page.mouse.wheel(0, random.randint(300, 700))
@@ -162,7 +161,7 @@ class AsdaETL(PetProductsETL):
                     MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
                 logger.info(f"Sleeping for {sleep_time} seconds...")
                 soup = BeautifulSoup(rendered_html, "html.parser")
-                return soup.find('section', id="main-content")
+                return soup
 
         except Exception as e:
             logger.error(f"An error occurred: {e}")
@@ -194,11 +193,12 @@ class AsdaETL(PetProductsETL):
 
             variant = None
             price = float(soup.find('div', class_="pdp-main-details__price-container").find('strong', {'class': [
-                          'co-product__price', 'pdp-main-details__price']}).find(string=True, recursive=False).strip().replace('£', ''))
+                'co-product__price', 'pdp-main-details__price']}).find(string=True, recursive=False).strip().replace('£', ''))
             variants = []
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             if soup.find('div', class_="pdp-main-details__weight"):
                 variants.append(
@@ -206,19 +206,38 @@ class AsdaETL(PetProductsETL):
             else:
                 variants.append(variant)
 
-            if soup.find('span', class_="co-product__was-price"):
-                real_price = float(soup.find('div', class_="pdp-main-details__price-container").find('span', {'class': [
-                                   'co-product__was-price', 'pdp-main-details__was-price']}).find(string=True, recursive=False).strip().replace('£', ''))
-                prices.append(real_price)
-                discounted_prices.append(price)
-                discount_percentages.append((real_price - price) / real_price)
+            image_urls.append(
+                soup.find('meta', attrs={'property': "og:image"}).get('content'))
+
+            price = float(re.search(r"(\d+\.\d+)", soup.find('strong',
+                          class_="co-product__price pdp-main-details__price").text).group(1))
+            was_price_tag = soup.find(
+                'span', class_="co-product__was-price pdp-main-details__was-price")
+
+            if was_price_tag:
+                real_price_text = was_price_tag.text
+                real_price_match = re.search(r"(\d+\.\d+)", real_price_text)
+
+                if real_price_match:
+                    real_price = float(real_price_match.group(1))
+
+                    prices.append(real_price)
+                    discounted_prices.append(price)
+                    discount_percentages.append(
+                        round((real_price - price) / real_price, 2))
+
             else:
                 prices.append(price)
                 discounted_prices.append(None)
                 discount_percentages.append(None)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                              "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)
@@ -237,7 +256,8 @@ class AsdaETL(PetProductsETL):
         category_link = f"{self.BASE_URL}{category}"
         urls = []
 
-        soup = asyncio.run(self.extract_scrape_content(category_link))
+        soup = asyncio.run(self.extract_scrape_content(
+            category_link, '#main-content'))
 
         if soup.find('div', class_="co-pagination"):
             n_pages = int(
@@ -245,7 +265,7 @@ class AsdaETL(PetProductsETL):
 
             for p in range(1, n_pages):
                 soup_page_pagination = asyncio.run(
-                    self.extract_scrape_content(f"{category_link}?page={p}"))
+                    self.extract_scrape_content(f"{category_link}?page={p}", '#main-content'))
                 for product_container in soup_page_pagination.find_all('ul', class_="co-product-list__main-cntr"):
                     for product_list in product_container.find_all('li'):
                         if product_list.find('a'):
@@ -286,9 +306,12 @@ class AsdaETL(PetProductsETL):
 
             now = dt.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            soup = asyncio.run(self.extract_scrape_content(url))
+            soup = asyncio.run(
+                self.extract_scrape_content(url, '#main-content'))
             df = self.transform(soup, url)
 
             if df is not None:
                 self.load(df, db_conn, table_name)
                 update_url_scrape_status(db_conn, pkey, "DONE", now)
+            else:
+                update_url_scrape_status(db_conn, pkey, "FAILED", now)

@@ -44,7 +44,7 @@ class HarringtonsETL(PetProductsETL):
         before_sleep=before_sleep_log(logger, "WARNING"),
         reraise=True,
     )
-    async def extract_scrape_content(self, url):
+    async def extract_scrape_content(self, url, selector):
         soup = None
         browser = None
         try:
@@ -73,7 +73,7 @@ class HarringtonsETL(PetProductsETL):
                 })
 
                 await page.goto(url, wait_until="domcontentloaded")
-                await page.wait_for_selector("#MainContent", timeout=30000)
+                await page.wait_for_selector(selector, timeout=30000)
 
                 for _ in range(random.randint(3, 6)):
                     await page.mouse.wheel(0, random.randint(300, 700))
@@ -90,8 +90,7 @@ class HarringtonsETL(PetProductsETL):
                 sleep_time = random.uniform(
                     MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
                 logger.info(f"Sleeping for {sleep_time} seconds...")
-                soup = BeautifulSoup(rendered_html, "html.parser")
-                return soup.find('main', id="MainContent")
+                return BeautifulSoup(rendered_html, "html.parser")
 
         except Exception as e:
             logger.error(f"An error occurred: {e}")
@@ -122,6 +121,7 @@ class HarringtonsETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             price_container = soup.find('div', class_="price__container")
             original_price = None
@@ -170,9 +170,16 @@ class HarringtonsETL(PetProductsETL):
             prices.append(original_price.replace('£', ''))
             discounted_prices.append(sale_price)
             discount_percentages.append(discount)
+            image_urls.append(
+                soup.find('meta', attrs={'property': "og:image"}).get('content'))
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)
@@ -192,7 +199,8 @@ class HarringtonsETL(PetProductsETL):
         category_link = f"{self.BASE_URL}{category}"
 
         urls = []
-        soup = asyncio.run(self.extract_scrape_content(category_link))
+        soup = asyncio.run(self.extract_scrape_content(
+            category_link, '#MainContent'))
 
         n_product = int(soup.find(
             'span', class_="boost-pfs-filter-total-product").find(string=True, recursive=False))
@@ -200,7 +208,7 @@ class HarringtonsETL(PetProductsETL):
 
         for i in range(1, pagination_length + 1):
             soup_pagination = asyncio.run(
-                self.extract_scrape_content(f"{category_link}?page={i}"))
+                self.extract_scrape_content(f"{category_link}?page={i}", '#MainContent'))
             for prod_list in soup_pagination.find_all('li', class_="list-product-card__item"):
                 urls.append(self.BASE_URL + prod_list.find('a',
                             class_="card-product__heading-link").get('href').replace('#', ''))
@@ -232,7 +240,8 @@ class HarringtonsETL(PetProductsETL):
 
             now = dt.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            soup = asyncio.run(self.extract_scrape_content(url))
+            soup = asyncio.run(
+                self.extract_scrape_content(url, "#MainContent"))
             df = self.transform(soup, url)
 
             if df is not None:

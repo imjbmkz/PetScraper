@@ -2,6 +2,9 @@ import pandas as pd
 import random
 import requests
 import math
+import re
+import json
+import time
 from datetime import datetime
 from loguru import logger
 from bs4 import BeautifulSoup
@@ -24,8 +27,8 @@ from playwright.async_api import async_playwright
 nest_asyncio.apply()
 
 MAX_RETRIES = 25
-MAX_WAIT_BETWEEN_REQ = 1
-MIN_WAIT_BETWEEN_REQ = 0.5
+MAX_WAIT_BETWEEN_REQ = 10
+MIN_WAIT_BETWEEN_REQ = 5
 REQUEST_TIMEOUT = 30
 
 
@@ -115,7 +118,6 @@ class ZooplusETL(PetProductsETL):
 
                 browser = await p.chromium.launch(**browser_args)
                 context = await browser.new_context(
-                    user_agent=UserAgent().random,
                     locale="en-US"
                 )
 
@@ -123,11 +125,22 @@ class ZooplusETL(PetProductsETL):
 
                 await page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
                 await page.set_extra_http_headers({
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.9",
+                    "Accept": 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Encoding': 'gzip, deflate, br, zstd',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Cache-Control': 'max-age=0',
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 OPR/118.0.0.0",
+                    'Referer': 'https://www.google.com/',
+                    'Priority': "u=0, i",
                     "Upgrade-Insecure-Requests": "1",
-                    "Referer": url,
+                    "Connection": "keep-alive",
+                    "Sec-Ch-Ua": "\"Not(A:Brand\";v=\"99\", \"Opera GX\";v=\"118\", \"Chromium\";v=\"133\"",
+                    "Sec-Ch-Ua-Mobile": "?0",
+                    "Sec-Ch-Ua-Platform": "\"Windows\"",
+                    "Sec-Fetch-Dest": "document",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Site": "same-origin",
+                    "Sec-Fetch-User": "?1"
                 })
                 await page.goto(url, wait_until="domcontentloaded")
                 await page.wait_for_selector(selector, timeout=300000)
@@ -146,6 +159,7 @@ class ZooplusETL(PetProductsETL):
                 )
                 sleep_time = random.uniform(
                     MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
+
                 logger.info(f"Sleeping for {sleep_time} seconds...")
                 soup = BeautifulSoup(rendered_html, "html.parser")
                 return soup
@@ -158,89 +172,98 @@ class ZooplusETL(PetProductsETL):
                 await browser.close()
 
     def transform(self, soup: BeautifulSoup, url: str):
-        # Get product wrappers. Each wrapper may have varying content.
-        product_wrappers = soup.select(
-            'div[class*="ProductListItem_productWrapper"]')
+        try:
+            product_data = json.loads(soup.select(
+                "script[type*='application/ld+json']")[0].text)
+            product_name = product_data['name']
+            product_description = product_data['description']
+            product_url = url.replace(self.BASE_URL, "")
 
-        # Placeholder for consolidated data frames
-        consolidated_data = []
+            rating = '0/5'
+            if "aggregateRating" in product_data.keys():
+                rating = product_data["aggregateRating"]["ratingValue"]
+                rating = f"{rating}/5"
 
-        # Iterate through the wrappers
-        for wrapper in product_wrappers:
-            # Get the product title, rating, and description
-            product_title = wrapper.select_one(
-                'a[class*="ProductListItem_productInfoTitleLink"]').text
-            rating = wrapper.select_one(
-                'span[class*="pp-visually-hidden"]').text
-            description = wrapper.select_one(
-                'p[class*="ProductListItem_productInfoDescription"]').text
-            product_url = wrapper.select_one(
-                'a[class*="ProductListItem_productInfoTitleLink"]')["href"]
-
-            # Get product variants. Each variant has their own price.
-            product_variants = wrapper.select(
-                'div[class*="ProductListItemVariant_variantWrapper"]')
-
-            # Placeholder for variant details
             variants = []
             prices = []
             discounted_prices = []
             discount_percentages = []
             image_urls = []
 
-            # Get the variant name, price, and reference price
-            for variant in product_variants:
-                variants.append(variant.select_one(
-                    'span[class*="ProductListItemVariant_variantDescription"]').text)
+            pattern = r"^.*£"
+            rrb_pattern = r"[^\d\.]"
 
-                price = float(variant.select_one(
-                    'span[class*="z-price__amount"]').text.replace("£", ""))
+            variants_list = soup.find(
+                'div', class_="VariantList_variantList__PeaNd")
+            if variants_list:
+                variant_hopps = variants_list.select(
+                    "div[data-hopps*='Variant']")
+                for variant_hopp in variant_hopps:
+                    variant = variant_hopp.select_one(
+                        "span[class*='VariantDescription_description']").text
+                    image_variant = variant_hopp.find('img').get('src')
+                    discount_checker = variant_hopp.find(
+                        'div', class_="z-product-price__note-wrap")
 
-                # Not all products are discounted. Sometimes, there are no reference prices
-                reference_price_span = variant.select_one(
-                    'span[data-zta*="productReducedPriceRefPriceAmount"]')
-                if reference_price_span:
+                    if discount_checker:
+                        price = float(re.sub(rrb_pattern, "", variant_hopp.select_one(
+                            "div[class*='z-product-price__nowrap']").text))
+                        discounted_price = float(re.sub(pattern, "", variant_hopp.select_one(
+                            "span[class*='z-product-price__amount']").text))
+                        discount_percent = round(
+                            (price - float(discounted_price)) / price, 2)
+                    else:
+                        price = float(re.sub(pattern, "", variant_hopp.select_one(
+                            "span[class*='z-product-price__amount']").text))
+                        discounted_price = None
+                        discount_percent = None
 
-                    # Reference price is the original price before discount
-                    reference_price = float(
-                        reference_price_span.text.replace("£", ""))
-                    prices.append(reference_price)
-                    discounted_prices.append(price)
-
-                    # Calculate the discount percentage
-                    discount_percentage = (
-                        (reference_price - price) / reference_price)
-                    discount_percentages.append(discount_percentage)
-
-                else:
-                    # If there is no reference price, then the product is not discounted
+                    variants.append(variant)
                     prices.append(price)
-                    discounted_prices.append(None)
-                    discount_percentages.append(None)
+                    discounted_prices.append(discounted_price)
+                    discount_percentages.append(discount_percent)
+                    image_urls.append(image_variant)
 
-            # Compile the data acquired into dataframe
-            df = pd.DataFrame(
-                {
-                    "variant": variants,
-                    "price": prices,
-                    "discounted_price": discounted_prices,
-                    "discount_percentage": discount_percentages,
-                    "image_urls": image_urls
-                }
-            )
+            else:
+                variant = soup.select_one(
+                    "div[data-zta*='ProductTitle__Subtitle']").text
+                discount_checker = soup.find('span', attrs={
+                    'data-zta': 'SelectedArticleBox__TopSection'}).find('div', class_="z-product-price__note-wrap")
+
+                if discount_checker:
+                    price = float(re.sub(rrb_pattern, "", soup.find('span', attrs={
+                        'data-zta': 'SelectedArticleBox__TopSection'}).find('div', class_="z-product-price__nowrap").get_text()))
+                    discounted_price = float(re.sub(pattern, "", soup.find('span', attrs={
+                        'data-zta': 'SelectedArticleBox__TopSection'}).find('span', class_="z-product-price__amount--reduced").get_text()))
+                    discount_percent = round(
+                        (price - float(discounted_price)) / price, 2)
+                else:
+                    price = float(re.sub(pattern, "", soup.find('span', attrs={
+                        'data-zta': 'SelectedArticleBox__TopSection'}).find('span', class_="z-product-price__amount").get_text()))
+                    discounted_price = None
+                    discount_percent = None
+
+                variants.append(variant)
+                prices.append(price)
+                discounted_prices.append(discounted_price)
+                discount_percentages.append(discount_percent)
+                image_urls.append(
+                    soup.find('meta', attrs={'property': "og:image"}).get('content'))
+
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
-            df.insert(0, "description", description)
+            df.insert(0, "description", product_description)
             df.insert(0, "rating", rating)
-            df.insert(0, "name", product_title)
+            df.insert(0, "name", product_name)
+            df.insert(0, "shop", self.SHOP)
 
-            consolidated_data.append(df)
-
-        try:
-            df_consolidated = pd.concat(
-                consolidated_data, ignore_index=True)
-            df_consolidated.insert(0, "shop", self.SHOP)
-
-            return df_consolidated
+            return df
 
         except Exception as e:
             logger.error(f"Error scraping {url}: {e}")
@@ -248,57 +271,76 @@ class ZooplusETL(PetProductsETL):
     @retry(
         wait=wait_random(min=MIN_WAIT_BETWEEN_REQ, max=MAX_WAIT_BETWEEN_REQ),
         stop=stop_after_attempt(MAX_RETRIES),
-        retry=retry_if_exception_type(AttributeError),
+        retry=retry_if_exception_type(requests.RequestException),
         before_sleep=before_sleep_log(logger, "WARNING"),
-        reraise=True
+        reraise=True,
     )
+    def get_product_links(self, url, headers):
+        try:
+            # Parse request response
+            response = self.session.request(
+                method="GET", url=url, headers=headers)
+            response.raise_for_status()
+
+            logger.info(
+                f"Successfully extracted data from {url} {response.status_code}"
+            )
+            sleep_time = random.uniform(
+                MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
+            time.sleep(sleep_time)
+            logger.info(f"Sleeping for {sleep_time} seconds...")
+            return response
+
+        except Exception as e:
+            logger.error(f"Error in parsing {url}: {e}")
+
     def get_links(self, category: str) -> pd.DataFrame:
         if category not in self.CATEGORIES:
             raise ValueError(
                 f"Invalid category. Value must be in {self.CATEGORIES}")
 
-        url = self.BASE_URL + category
-
-        soup = asyncio.run(self.extract_scrape_content(
-            url, '#shop-main-navigation'))
-
-        pagination = soup.find('ul', class_="z-pagination__list")
-        if pagination is None:
-            raise AttributeError("Pagination element not found — retrying...")
-
-        pagination_length = int(pagination.find_all('a')[-1].get_text())
+        headers = {
+            "Accept": 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'max-age=0',
+            "User-Agent": UserAgent().random,
+            'Referer': 'https://www.bitiba.co.uk/',
+            'Priority': "u=0, i",
+            "Upgrade-Insecure-Requests": "1",
+            "Connection": "keep-alive",
+            "Sec-Ch-Ua": "\"Not(A:Brand\";v=\"99\", \"Opera GX\";v=\"118\", \"Chromium\";v=\"133\"",
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": "\"Windows\"",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1"
+        }
 
         urls = []
-        for i in range(1, pagination_length + 1):
-            page_url = f"{url}?p={i}"
-            try:
-                links = self.get_product_links_from_page(page_url)
-                urls.extend(links)
-            except Exception as e:
-                logger.error(f"Page {i} failed after retries: {e}")
+        n_page_pagination = 1
+        list_prod_api = self.get_product_links(
+            f"https://www.zooplus.co.uk/api/discover/v1/products/list-faceted-partial?&path={category}&domain=zooplus.co.uk&language=en&page=1&size=24&ab=shop-10734_shop_product_catalog_api_enabled_targeted_delivery.enabled%2Bidpo-1141_article_based_product_cards_targeted_delivery.on%2Bidpo-1390_rebranding_foundation_targeted_delivery.on%2Bexplore-3092-price-redesign_targeted_delivery.on", headers=headers)
+        if list_prod_api.status_code == 200:
+            if list_prod_api.json()['pagination'] == None:
+                for products in list_prod_api.json()['productList']['products']:
+                    urls.append(products["path"])
+
+            else:
+                n_page_pagination = int(list_prod_api.json()[
+                                        'pagination']["count"])
+
+        if n_page_pagination > 1:
+            for i in range(1, n_page_pagination + 1):
+                pagination_url = f"https://www.zooplus.co.uk/api/discover/v1/products/list-faceted-partial?&path={category}&domain=zooplus.co.uk&language=en&page={i}&size=24&ab=shop-10734_shop_product_catalog_api_enabled_targeted_delivery.enabled%2Bidpo-1141_article_based_product_cards_targeted_delivery.on%2Bidpo-1390_rebranding_foundation_targeted_delivery.on%2Bexplore-3092-price-redesign_targeted_delivery.on"
+
+                pagination_product_api = self.get_product_links(
+                    pagination_url, headers=headers)
+                if pagination_product_api.status_code == 200:
+                    for products in pagination_product_api.json()['productList']['products']:
+                        urls.append(products["path"])
 
         df = pd.DataFrame({"url": urls})
         df.insert(0, "shop", self.SHOP)
         return df
-
-    @retry(
-        wait=wait_random(min=MIN_WAIT_BETWEEN_REQ, max=MAX_WAIT_BETWEEN_REQ),
-        stop=stop_after_attempt(MAX_RETRIES),
-        retry=retry_if_exception_type(AttributeError),
-        before_sleep=before_sleep_log(logger, "WARNING"),
-        reraise=True
-    )
-    def get_product_links_from_page(self, url: str) -> list:
-        soup_pagination = asyncio.run(self.extract_scrape_content(
-            url, '#shop-main-navigation'))
-
-        wrapper = soup_pagination.find(
-            'div', class_="ProductsGrid_productCardsWrapper__IWmQO")
-
-        if wrapper is None:
-            raise AttributeError("Products grid not found — retrying...")
-
-        product_cards = wrapper.find_all(
-            'div', class_="ProductCard_productCard__g9uwD")
-
-        return [self.BASE_URL + anchor.get('href') for product in product_cards if (anchor := product.find('a')) and anchor.get('href')]

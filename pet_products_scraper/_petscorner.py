@@ -213,6 +213,7 @@ class PetsCornerETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             if soup.find('div', class_="hidden-select"):
                 for variant in soup.find('div', class_="fake-select").find_all('div', class_="text"):
@@ -233,6 +234,9 @@ class PetsCornerETL(PetProductsETL):
                         discount_percentages.append(
                             "{:.2f}".format(round(discount_percentage, 2)))
 
+                    image_urls.append(
+                        soup.find('meta', attrs={'property': "og:image"}).get('content'))
+
             else:
                 price_template = soup.find_all(
                     'span', attrs={'class': ['item-price', 'order-section']})[-1]
@@ -251,8 +255,16 @@ class PetsCornerETL(PetProductsETL):
                     discounted_prices.append(None)
                     discount_percentages.append(None)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+                image_urls.append(
+                    soup.find('meta', attrs={'property': "og:image"}).get('content'))
+
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)

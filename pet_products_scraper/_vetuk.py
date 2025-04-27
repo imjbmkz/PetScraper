@@ -80,6 +80,7 @@ class VetUKETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             for v in variant_wrapper:
                 if "(Sold Out)" in v.find('span').get_text():
@@ -100,6 +101,8 @@ class VetUKETL(PetProductsETL):
                             'p', class_="manufacturer-name").get_text().replace('Manufacturer: ', '')
 
                 variants.append(variant_name)
+                image_urls.append(
+                    soup.find('img', class_="product-image-main").get('src'))
 
                 if v.find('span', class_='retailPrice'):
                     if "Now: £" in v.find('span', class_='retailPrice').get_text():
@@ -137,8 +140,13 @@ class VetUKETL(PetProductsETL):
                 else:
                     discounted_prices.append(discount_price)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                              "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)

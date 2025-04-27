@@ -85,11 +85,11 @@ PROGRAM_NAME = "Pet Products Scraper"
 
 def run_etl(shop: str) -> PetProductsETL:
     factory = {
-        "Zooplus": ZooplusETL(),  # Pending
+        "Zooplus": ZooplusETL(),  # Done WIP on how to bypass completly CloudFront
         "PetsAtHome": PetsAtHomeETL(),  # Done
         "Jollyes": JollyesETL(),  # Done
         "LilysKitchen": LilysKitchenETL(),  # Done
-        "Bitiba": BitibaETL(),  # Pending
+        "Bitiba": BitibaETL(),  # Done But WIP on how to bypass completly CloudFront
         "PetSupermarket": PetSupermarketETL(),  # Done
         "PetPlanet": PetPlanetETL(),  # Done
         "Purina": PurinaETL(),  # Done
@@ -97,24 +97,24 @@ def run_etl(shop: str) -> PetProductsETL:
         "FishKeeper": FishKeeperETL(),  # Done
         "PetDrugsOnline": PetDrugsOnlineETL(),  # Done
         "Viovet": ViovetETL(),  # Done
-        "PetShop": PetShopETL(),
-        "VetShop": VetShopETL(),
-        "VetUK": VetUKETL(),
-        "BurnsPet": BurnsPetETL(),
-        "ASDAGroceries": AsdaETL(),
-        "TheRange": TheRangeETL(),
-        "Ocado": OcadoETL(),
-        "Harringtons": HarringtonsETL(),
-        "BernPetFoods": BernPetFoodsETL(),
-        "PetsCorner": PetsCornerETL(),
-        "Orijen": OrijenETL(),
-        "ThePetExpress": ThePetExpressETL(),
-        "PetShopOnline": PetShopOnlineETL(),
-        "TaylorPetFoods": TaylorPetFoodsETL(),
-        "TheNaturalPetStore": TheNaturalPetStoreETL(),
-        "HealthyPetStore": HealthyPetStoreETL(),
-        "FarmAndPetPlace": FarmAndPetPlaceETL(),
-        "NaturesMenu": NaturesMenuETL(),
+        "PetShop": PetShopETL(),  # Done
+        "VetShop": VetShopETL(),  # Done
+        "VetUK": VetUKETL(),  # Done
+        "BurnsPet": BurnsPetETL(),  # Done
+        "ASDAGroceries": AsdaETL(),  # Done
+        "TheRange": TheRangeETL(),  # Done Scraping but Cloudfalre Problem
+        "Ocado": OcadoETL(),  # Done
+        "Harringtons": HarringtonsETL(),  # Done
+        "BernPetFoods": BernPetFoodsETL(),  # Done
+        "PetsCorner": PetsCornerETL(),  # Done
+        "Orijen": OrijenETL(),  # Done
+        "ThePetExpress": ThePetExpressETL(),  # Done
+        "PetShopOnline": PetShopOnlineETL(),  # Done
+        "TaylorPetFoods": TaylorPetFoodsETL(),  # Done
+        "TheNaturalPetStore": TheNaturalPetStoreETL(),  # Done
+        "HealthyPetStore": HealthyPetStoreETL(),  # Done
+        "FarmAndPetPlace": FarmAndPetPlaceETL(),  # Done
+        "NaturesMenu": NaturesMenuETL(),  # Done
     }
 
     if shop in factory:
