@@ -28,8 +28,8 @@ from playwright.async_api import async_playwright
 nest_asyncio.apply()
 
 MAX_RETRIES = 10
-MAX_WAIT_BETWEEN_REQ = 300
-MIN_WAIT_BETWEEN_REQ = 100
+MAX_WAIT_BETWEEN_REQ = 5
+MIN_WAIT_BETWEEN_REQ = 2
 REQUEST_TIMEOUT = 30
 
 
@@ -94,7 +94,7 @@ class TheRangeETL(PetProductsETL):
         try:
             async with async_playwright() as p:
                 browser_args = {
-                    "headless": False,
+                    "headless": True,
                     "args": ["--disable-blink-features=AutomationControlled"]
                 }
 

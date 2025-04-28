@@ -194,7 +194,7 @@ if __name__ == "__main__":
 
     elif task == "get_image":
         pi = PetImage('./csv/pet_product_variant_urls.csv')
-        pi.extract(pi.valid_companies, min_sec=1, max_sec=2)
+        pi.extract(SHOPS, min_sec=1, max_sec=2)
 
     end_time = dt.datetime.now()
     duration = end_time - start_time

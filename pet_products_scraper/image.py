@@ -37,11 +37,11 @@ from pet_products_scraper import (
 )
 
 factory = {
-    # "Zooplus": ZooplusETL(),
+    "Zooplus": ZooplusETL(),
     "PetsAtHome": PetsAtHomeETL(),
     "Jollyes": JollyesETL(),
     "LilysKitchen": LilysKitchenETL(),
-    # "Bitiba": BitibaETL(),
+    "Bitiba": BitibaETL(),
     "PetSupermarket": PetSupermarketETL(),
     "PetPlanet": PetPlanetETL(),
     "Purina": PurinaETL(),
@@ -54,7 +54,7 @@ factory = {
     "VetUK": VetUKETL(),
     "BurnsPet": BurnsPetETL(),
     "ASDAGroceries": AsdaETL(),
-    # "TheRange": TheRangeETL(),
+    "TheRange": TheRangeETL(),
     "Ocado": OcadoETL(),
     "Harringtons": HarringtonsETL(),
     "BernPetFoods": BernPetFoodsETL(),
@@ -87,7 +87,8 @@ class PetImage():
             raise ValueError(
                 f"Shop {shop} is not supported. Please pass a valid shop.")
 
-    def extract(self, companies: str, min_sec=1, max_sec=3):
+    def extract(self, companies: str, min_sec, max_sec):
+        hard_scrape_companies = ['Zooplus', 'Bitiba']
         for c in companies:
             logger.info(f"Scraping images for {c}...")
 
@@ -101,9 +102,16 @@ class PetImage():
                     if scrape_df is not None:
                         scrape_payload.append(scrape_df)
 
-                    # sleep_time = random.uniform(min_sec, max_sec)
-                    # logger.info(f"Sleeping for {sleep_time:.2f} seconds...")
-                    # time.sleep(sleep_time)
+                    if c in hard_scrape_companies:
+                        sleep_time = random.uniform(60, 120)
+                        logger.info(
+                            f"Sleeping for {sleep_time:.2f} seconds...")
+                        time.sleep(sleep_time)
+                    else:
+                        sleep_time = random.uniform(min_sec, max_sec)
+                        logger.info(
+                            f"Sleeping for {sleep_time:.2f} seconds...")
+                        time.sleep(sleep_time)
 
                 except Exception as e:
                     logger.error(f"Error scraping {link}: {e}")
@@ -116,8 +124,10 @@ class PetImage():
 
         df_merge = df_products.merge(df_scrape, how="inner",
                                      left_on="full_url", right_on="url")
+
+        df_merge = df_merge.rename(columns={'url_x': 'url'})
         self.load(
-            df_merge[['id', 'shop_name', 'base_url', 'url', 'variant', 'image_urls']], company)
+            df_merge[['id', 'shop', 'base_url', 'url', 'variant', 'image_urls']], company)
 
     def load(self, df: pd.DataFrame, company: str):
         output_path = f'./csv/{company}.csv'
