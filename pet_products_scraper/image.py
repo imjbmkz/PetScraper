@@ -83,7 +83,7 @@ class PetImage():
             raise ValueError(
                 f"Shop {shop} is not supported. Please pass a valid shop.")
 
-    def extract(self, companies: str, min_sec, max_sec):
+    def extract(self, min_sec: int, max_sec: int):
         hard_scrape_companies = ['Zooplus', 'Bitiba']
         valid_companies = [
             company for company in self.df['shop_name'].unique()
