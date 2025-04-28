@@ -45,7 +45,10 @@ from pet_products_scraper import (
     HealthyPetStoreETL,
     FarmAndPetPlaceETL,
     NaturesMenuETL,
+
+    PetImage
 )
+
 
 SHOPS = [
     "Zooplus",
@@ -130,7 +133,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("task", choices=[
-                    "get_links", "scrape"], help="Identify the task to be executed. get_links=get links from registered shops; scrape=scrape products.")
+                    "get_links", "scrape", "get_image"], help="Identify the task to be executed. get_links=get links from registered shops; scrape=scrape products.")
 parser.add_argument("-s", "--shop", choices=SHOPS,
                     help="Select a shop to scrape. Default: all shops.")
 args = parser.parse_args()
@@ -165,9 +168,9 @@ if __name__ == "__main__":
 
     task = args.task
     shop = args.shop
-    client = run_etl(shop)
 
     if task == "get_links":
+        client = run_etl(shop)
         utils.execute_query(engine, "TRUNCATE TABLE stg_urls;")
         client.refresh_links(engine, "stg_urls")
 
@@ -175,6 +178,7 @@ if __name__ == "__main__":
         utils.execute_query(engine, sql)
 
     elif task == "scrape":
+        client = run_etl(shop)
         utils.execute_query(engine, "TRUNCATE TABLE stg_pet_products;")
         client.run(engine, "stg_pet_products")
 
@@ -187,6 +191,10 @@ if __name__ == "__main__":
         sql = utils.get_sql_from_file(
             "insert_into_pet_product_variant_prices.sql")
         utils.execute_query(engine, sql)
+
+    elif task == "get_image":
+        pi = PetImage('./csv/pet_product_variant_urls.csv')
+        pi.extract(pi.valid_companies, min_sec=1, max_sec=2)
 
     end_time = dt.datetime.now()
     duration = end_time - start_time

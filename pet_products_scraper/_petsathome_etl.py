@@ -139,3 +139,12 @@ class PetsAtHomeETL(PetProductsETL):
 
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

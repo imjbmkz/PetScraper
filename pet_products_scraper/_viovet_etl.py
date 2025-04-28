@@ -242,3 +242,12 @@ class ViovetETL(PetProductsETL):
 
         sql = get_sql_from_file("insert_into_urls.sql")
         execute_query(db_conn, sql)
+
+    def image_scrape_product(self, url):
+        soup = self.fetch_page(url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

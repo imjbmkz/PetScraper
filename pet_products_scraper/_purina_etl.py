@@ -19,7 +19,7 @@ class PurinaETL(PetProductsETL):
         try:
             product_name = soup.find(
                 'h1', class_="dsu-product--title").get_text(strip=True)
-            product_url = url.replace('https://www.bitiba.co.uk', "")
+            product_url = url.replace(self.BASE_URL, "")
             product_description = soup.find(
                 'meta', attrs={'property': 'og:description'}).get('content')
             product_rating = '0/5'
@@ -97,3 +97,12 @@ class PurinaETL(PetProductsETL):
         df.insert(0, "shop", self.SHOP)
 
         return df
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': ', '.join([self.BASE_URL + img.find('img').get('src') for img in soup.find('div', class_="carousel-media").find_all('div', class_="field__item")])
+        }

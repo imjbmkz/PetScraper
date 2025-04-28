@@ -114,3 +114,14 @@ class JollyesETL(PetProductsETL):
             df.insert(0, "shop", self.SHOP)
 
             return df
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+        data = json.loads(soup.select_one(
+            "section[class*='lazy-review-section']").select_one("script[type*='application']").text)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': ', '.join(data['image'])
+        }

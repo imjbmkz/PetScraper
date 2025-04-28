@@ -29,3 +29,4 @@ from ._thenaturalpetstore import TheNaturalPetStoreETL
 from ._healthypetstore import HealthyPetStoreETL
 from ._farmandpetplace import FarmAndPetPlaceETL
 from ._naturesmenu import NaturesMenuETL
+from .image import PetImage

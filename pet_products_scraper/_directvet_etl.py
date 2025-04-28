@@ -216,3 +216,12 @@ class DirectVetETL(PetProductsETL):
 
     # def refresh_links(self, db_conn: Engine, table_name: str):
     #     pass
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('img', id="bigpic").get('src')
+        }

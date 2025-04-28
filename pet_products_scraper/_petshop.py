@@ -137,3 +137,13 @@ class PetShopETL(PetProductsETL):
             return df
         except Exception as e:
             logger.error(f"Error scraping {url}: {e}")
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': ', '.join([img.find('img').get(
+                'src') for img in soup.find('ul', class_="bxslider").find_all('li')])
+        }

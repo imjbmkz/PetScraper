@@ -296,3 +296,13 @@ class PetsCornerETL(PetProductsETL):
                 update_url_scrape_status(db_conn, pkey, "DONE", now)
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
+
+    def image_scrape_product(self, url):
+        soup = asyncio.run(self.extract_scrape_content(
+            url, '#ctl00_Content_zneContent6_ctl05_ctl02'))
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

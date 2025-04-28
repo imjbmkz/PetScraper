@@ -11,6 +11,25 @@ from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
 from fake_useragent import UserAgent
 
+headers = {
+    "Accept": 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br, zstd',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'max-age=0',
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 OPR/118.0.0.0",
+    'Referer': 'https://www.bitiba.co.uk/',
+    'Priority': "u=0, i",
+    "Upgrade-Insecure-Requests": "1",
+    "Connection": "keep-alive",
+    "Sec-Ch-Ua": "\"Not(A:Brand\";v=\"99\", \"Opera GX\";v=\"118\", \"Chromium\";v=\"133\"",
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": "\"Windows\"",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-User": "?1"
+}
+
 
 class BitibaETL(PetProductsETL):
 
@@ -192,25 +211,6 @@ class BitibaETL(PetProductsETL):
 
             now = dt.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            headers = {
-                "Accept": 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Cache-Control': 'max-age=0',
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 OPR/118.0.0.0",
-                'Referer': 'https://www.bitiba.co.uk/',
-                'Priority': "u=0, i",
-                "Upgrade-Insecure-Requests": "1",
-                "Connection": "keep-alive",
-                "Sec-Ch-Ua": "\"Not(A:Brand\";v=\"99\", \"Opera GX\";v=\"118\", \"Chromium\";v=\"133\"",
-                "Sec-Ch-Ua-Mobile": "?0",
-                "Sec-Ch-Ua-Platform": "\"Windows\"",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "same-origin",
-                "Sec-Fetch-User": "?1"
-            }
-
             soup = self.extract_from_url("GET", url, headers=headers)
             time.sleep(302)
             df = self.transform(soup, url)
@@ -221,3 +221,12 @@ class BitibaETL(PetProductsETL):
 
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url, headers=headers)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

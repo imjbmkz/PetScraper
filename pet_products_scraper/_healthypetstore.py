@@ -181,3 +181,12 @@ class HealthyPetStoreETL(PetProductsETL):
         df.insert(0, "shop", self.SHOP)
 
         return df
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

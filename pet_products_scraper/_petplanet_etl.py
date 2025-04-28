@@ -262,3 +262,12 @@ class PetPlanetETL(PetProductsETL):
 
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url,  verify=False)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': ', '.join([img.get('src') for img in soup.find('div', class_="product-gallery-control").find_all('img')])
+        }

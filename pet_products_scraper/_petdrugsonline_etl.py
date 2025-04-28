@@ -58,8 +58,13 @@ class PetDrugsOnlineETL(PetProductsETL):
                     discounted_prices.append(None)
                     discount_percentages.append(None)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages, "image_urls": image_urls})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)
@@ -105,3 +110,12 @@ class PetDrugsOnlineETL(PetProductsETL):
 
     # def refresh_links(self, db_conn: Engine, table_name: str):
     #     pass
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('div', class_="product-gallery").find('img').get('src')
+        }

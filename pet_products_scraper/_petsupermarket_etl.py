@@ -233,3 +233,12 @@ class PetSupermarketETL(PetProductsETL):
 
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
+
+    def image_scrape_product(self, url):
+        soup = asyncio.run(self.extract_scrape_content(url, '#feedbackButton'))
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': ', '.join([img.get('src') for img in soup.find_all('div', attrs={'data-test': 'carousel-inner-wrapper'})[0].find_all('img')])
+        }

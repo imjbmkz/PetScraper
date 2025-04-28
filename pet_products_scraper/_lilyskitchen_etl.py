@@ -109,3 +109,12 @@ class LilysKitchenETL(PetProductsETL):
 
     # def run(self, db_conn: Engine, table_name: str):
     #     pass
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find_all('div', class_="js-p-mainimage")[0].find('noscript').find('img').get('src')
+        }

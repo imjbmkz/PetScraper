@@ -187,3 +187,12 @@ class VetUKETL(PetProductsETL):
 
         sql = get_sql_from_file("insert_into_urls.sql")
         execute_query(db_conn, sql)
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('img', class_="product-image-main").get('src')
+        }
