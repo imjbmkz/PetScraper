@@ -96,11 +96,14 @@ class PetImage():
             scrape_links = sample_df['full_url'].drop_duplicates().tolist()
             scraper = self.run_etl(c)
             scrape_payload = []
+            i = 0
             for link in scrape_links:
                 try:
                     scrape_df = scraper.image_scrape_product(link)
                     if scrape_df is not None:
                         scrape_payload.append(scrape_df)
+                        i += 1
+                        logger.info(f"Scraped {i} out of {len(scrape_links)}")
 
                     if c in hard_scrape_companies:
                         sleep_time = random.uniform(60, 120)
