@@ -75,10 +75,6 @@ class PetImage():
     def __init__(self, file):
         self.df = pd.read_csv(file)
         self.df['full_url'] = self.df['base_url'].str[:-1] + self.df['url']
-        self.valid_companies = [
-            company for company in self.df['shop_name'].unique()
-            if company in factory.keys()
-        ]
 
     def run_etl(self, shop: str):
         if shop in factory:
@@ -89,7 +85,11 @@ class PetImage():
 
     def extract(self, companies: str, min_sec, max_sec):
         hard_scrape_companies = ['Zooplus', 'Bitiba']
-        for c in companies:
+        valid_companies = [
+            company for company in self.df['shop_name'].unique()
+            if company in factory.keys()
+        ]
+        for c in valid_companies:
             logger.info(f"Scraping images for {c}...")
 
             sample_df = self.df[self.df['shop_name'] == c]
