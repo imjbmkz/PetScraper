@@ -103,8 +103,8 @@ class PetImage():
                     if scrape_df is not None:
                         scrape_payload.append(scrape_df)
                         i += 1
-                        logger.info(f"Scraped {i} out of {len(scrape_links)}")
 
+                    logger.info(f"Scraped {i} out of {len(scrape_links)}")
                     if c in hard_scrape_companies:
                         sleep_time = random.uniform(60, 120)
                         logger.info(
