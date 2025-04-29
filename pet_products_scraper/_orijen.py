@@ -41,6 +41,7 @@ class OrijenETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             variant_list_wrapper = json.loads(soup.find(
                 'form', class_="variations_form cart").get('data-product_variations'))
@@ -49,9 +50,16 @@ class OrijenETL(PetProductsETL):
                 prices.append(variant_list.get('display_price'))
                 discounted_prices.append(None)
                 discount_percentages.append(None)
+                image_urls.append(', '.join(img.find('img').get(
+                    'src') for img in soup.find_all('div', class_="gallery-slider__image")))
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)
@@ -78,3 +86,12 @@ class OrijenETL(PetProductsETL):
             df = pd.DataFrame({"url": urls})
             df.insert(0, "shop", self.SHOP)
             return df
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

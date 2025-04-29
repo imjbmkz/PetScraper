@@ -27,7 +27,6 @@ class ThePetExpressETL(PetProductsETL):
             '/puppy-flea-treatments/',
             '/puppy-treats-chews/',
             '/puppy-worming-treatments/',
-            '/puppy-starter-kits/',
             "/dog-beds/",
             "/dog-bowls/",
             "/dog-feeding-mats/",
@@ -70,7 +69,6 @@ class ThePetExpressETL(PetProductsETL):
             "/kitten-toys/",
             '/kitten-treats/',
             '/kitten-worming-treatments/',
-            '/cat-kitten-starter-kits/',
             "/outdoor-cat-kennels-shelters/",
             "/cat-beds/",
             "/cat-bowls/",
@@ -85,7 +83,6 @@ class ThePetExpressETL(PetProductsETL):
             "/bird-food/",
             "/pigeon-food/",
             "/poultry-chicken-food/",
-            "/bird-harnesses-leads/",
             "/bird-lighting/",
             '/birds-toileting-grits-and-sands/',
             '/birds-living-cage-fittings/',
@@ -97,20 +94,14 @@ class ThePetExpressETL(PetProductsETL):
             "/reptile-vivarium-starter-kits/",
             "/vivariums-and-cabinets/",
             "/reptiles-living-heating/",
-            "/compact-uv-bulbs/",
             "/light-canopies-luminaires/",
             "/mercury-vapour-lamps/",
-            "/reptile-light-reflectors/",
             "/reptile-uv-bulbs-lamps/",
             "/fittings-fixtures-brackets/",
-            "/led-reptile-lighting/",
-            "/light-controllers/",
             "/vivarium-humidity/",
             "/reptiles-living-accessories/",
             "/reptile-substrates/",
-            "/reptile-care-books/",
             "/reptiles-feeding-drinkers-and-feeders/",
-            "/feeding-and-handling-equipment/",
             "/reptiles-supplements/",
             "/vivarium-cleaning-equipment/",
             "/other-reptile-equipment/"
@@ -136,7 +127,6 @@ class ThePetExpressETL(PetProductsETL):
             '/small-pet-shampoo/',
             "/small-animal-leads-and-harnesses/",
             "/small-animals-toys-and-exercise/",
-            "/small-animal-starter-kits/",
             "/fish-food/",
             "/fish-disease-treatments/",
             "/water-conditioners/",
@@ -201,12 +191,15 @@ class ThePetExpressETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             if soup.find('div', class_="in_page_options_option"):
 
                 for variant in soup.find('div', class_="in_page_options_option").find_all('div', class_="sub-options"):
                     variants.append(variant.find(
                         'div', class_="inpage_option_title").get_text())
+                    image_urls.append(
+                        soup.find('meta', attrs={'property': "og:image"}).get('content'))
 
                     if variant.find('span', class_="inpage_option_rrp"):
                         price = float(variant.find(
@@ -228,6 +221,8 @@ class ThePetExpressETL(PetProductsETL):
 
             else:
                 variants.append(None)
+                image_urls.append(
+                    soup.find('meta', attrs={'property': "og:image"}).get('content'))
 
                 is_price_same = soup.find('span', class_="ajax-price-vat").get_text().replace(
                     '£', '') == soup.find('span', class_="ajax-rrp").get_text().replace('£', '')
@@ -250,8 +245,13 @@ class ThePetExpressETL(PetProductsETL):
                     discounted_prices.append(discount_price)
                     discount_percentages.append(discount_percentage)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)
@@ -261,3 +261,12 @@ class ThePetExpressETL(PetProductsETL):
             return df
         except Exception as e:
             logger.error(f"Error scraping {url}: {e}")
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

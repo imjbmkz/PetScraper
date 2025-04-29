@@ -10,18 +10,18 @@ from selenium.webdriver.common.by import By
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
+
 class PetsAtHomeETL(PetProductsETL):
 
     def __init__(self):
         super().__init__()
         self.SHOP = "PetsAtHome"
         self.BASE_URL = "https://www.petsathome.com"
-        self.CATEGORIES = ["dog", "cat", "small-animal", "fish", "reptile", "bird-and-wildlife"]
+        self.CATEGORIES = ["dog", "cat", "small-animal",
+                           "fish", "reptile", "bird-and-wildlife"]
 
     def transform(self, soup: BeautifulSoup, url: str):
-
         try:
-        
             # Get the data from encoded JSON
             product_data = soup.select_one("[id='__NEXT_DATA__']")
             product_data_dict = json.loads(product_data.text)
@@ -42,6 +42,7 @@ class PetsAtHomeETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             # Iterate through all product variants
             for variant in product_data_dict["props"]["pageProps"]["baseProduct"]["products"]:
@@ -59,14 +60,16 @@ class PetsAtHomeETL(PetProductsETL):
                     discount_percentage = None
 
                 discount_percentages.append(discount_percentage)
+                image_urls.append(', '.join(variant['imageUrls']))
 
             # Compile the data acquired into dataframe
             df = pd.DataFrame(
                 {
-                    "variant": variants, 
+                    "variant": variants,
                     "price": prices,
                     "discounted_price": discounted_prices,
-                    "discount_percentage": discount_percentages
+                    "discount_percentage": discount_percentages,
+                    "image_urls": image_urls
                 }
             )
             df.insert(0, "url", product_url)
@@ -74,9 +77,9 @@ class PetsAtHomeETL(PetProductsETL):
             df.insert(0, "rating", rating)
             df.insert(0, "name", product_title)
             df.insert(0, "shop", self.SHOP)
-            
+
             return df
-        
+
         except Exception as e:
             logger.error(f"Error scraping {url}: {e}")
 
@@ -84,18 +87,19 @@ class PetsAtHomeETL(PetProductsETL):
         # Data validation on category
         cleaned_category = category.lower()
         if cleaned_category not in self.CATEGORIES:
-            raise ValueError(f"Invalid category. Value must be in {self.CATEGORIES}")
-        
+            raise ValueError(
+                f"Invalid category. Value must be in {self.CATEGORIES}")
+
         urls = []
 
         path = f"/product/listing/{category}"
 
         while True:
-        
+
             # Construct link
             url = self.BASE_URL + path
 
-            # Parse request response 
+            # Parse request response
             soup = self.extract_from_url("GET", url)
 
             wrappers = soup.select('a[class*="product-tile_wrapper"]')
@@ -135,3 +139,12 @@ class PetsAtHomeETL(PetProductsETL):
 
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

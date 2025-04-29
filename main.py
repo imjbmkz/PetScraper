@@ -45,10 +45,13 @@ from pet_products_scraper import (
     HealthyPetStoreETL,
     FarmAndPetPlaceETL,
     NaturesMenuETL,
+
+    PetImage
 )
 
+
 SHOPS = [
-    "Zooplus",
+    # "Zooplus",
     "PetsAtHome",
     "Jollyes",
     "LilysKitchen",
@@ -85,36 +88,36 @@ PROGRAM_NAME = "Pet Products Scraper"
 
 def run_etl(shop: str) -> PetProductsETL:
     factory = {
-        "Zooplus": ZooplusETL(),
-        "PetsAtHome": PetsAtHomeETL(),
-        "Jollyes": JollyesETL(),
-        "LilysKitchen": LilysKitchenETL(),
-        "Bitiba": BitibaETL(),
-        "PetSupermarket": PetSupermarketETL(),
-        "PetPlanet": PetPlanetETL(),
-        "Purina": PurinaETL(),
-        "DirectVet": DirectVetETL(),
-        "FishKeeper": FishKeeperETL(),
-        "PetDrugsOnline": PetDrugsOnlineETL(),
-        "Viovet": ViovetETL(),
-        "PetShop": PetShopETL(),
-        "VetShop": VetShopETL(),
-        "VetUK": VetUKETL(),
-        "BurnsPet": BurnsPetETL(),
-        "ASDAGroceries": AsdaETL(),
-        "TheRange": TheRangeETL(),
-        "Ocado": OcadoETL(),
-        "Harringtons": HarringtonsETL(),
-        "BernPetFoods": BernPetFoodsETL(),
-        "PetsCorner": PetsCornerETL(),
-        "Orijen": OrijenETL(),
-        "ThePetExpress": ThePetExpressETL(),
-        "PetShopOnline": PetShopOnlineETL(),
-        "TaylorPetFoods": TaylorPetFoodsETL(),
-        "TheNaturalPetStore": TheNaturalPetStoreETL(),
-        "HealthyPetStore": HealthyPetStoreETL(),
-        "FarmAndPetPlace": FarmAndPetPlaceETL(),
-        "NaturesMenu": NaturesMenuETL(),
+        "Zooplus": ZooplusETL(),  # Done WIP on how to bypass completly CloudFront
+        "PetsAtHome": PetsAtHomeETL(),  # Done
+        "Jollyes": JollyesETL(),  # Done
+        "LilysKitchen": LilysKitchenETL(),  # Done
+        "Bitiba": BitibaETL(),  # Done But WIP on how to bypass completly CloudFront
+        "PetSupermarket": PetSupermarketETL(),  # Done
+        "PetPlanet": PetPlanetETL(),  # Done
+        "Purina": PurinaETL(),  # Done
+        "DirectVet": DirectVetETL(),  # Done
+        "FishKeeper": FishKeeperETL(),  # Done
+        "PetDrugsOnline": PetDrugsOnlineETL(),  # Done
+        "Viovet": ViovetETL(),  # Done
+        "PetShop": PetShopETL(),  # Done
+        "VetShop": VetShopETL(),  # Done
+        "VetUK": VetUKETL(),  # Done
+        "BurnsPet": BurnsPetETL(),  # Done
+        "ASDAGroceries": AsdaETL(),  # Done
+        "TheRange": TheRangeETL(),  # Done Scraping but Cloudfalre Problem
+        "Ocado": OcadoETL(),  # Done
+        "Harringtons": HarringtonsETL(),  # Done
+        "BernPetFoods": BernPetFoodsETL(),  # Done
+        "PetsCorner": PetsCornerETL(),  # Done
+        "Orijen": OrijenETL(),  # Done
+        "ThePetExpress": ThePetExpressETL(),  # Done
+        "PetShopOnline": PetShopOnlineETL(),  # Done
+        "TaylorPetFoods": TaylorPetFoodsETL(),  # Done
+        "TheNaturalPetStore": TheNaturalPetStoreETL(),  # Done
+        "HealthyPetStore": HealthyPetStoreETL(),  # Done
+        "FarmAndPetPlace": FarmAndPetPlaceETL(),  # Done
+        "NaturesMenu": NaturesMenuETL(),  # Done
     }
 
     if shop in factory:
@@ -130,7 +133,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("task", choices=[
-                    "get_links", "scrape"], help="Identify the task to be executed. get_links=get links from registered shops; scrape=scrape products.")
+                    "get_links", "scrape", "get_image"], help="Identify the task to be executed. get_links=get links from registered shops; scrape=scrape products.")
 parser.add_argument("-s", "--shop", choices=SHOPS,
                     help="Select a shop to scrape. Default: all shops.")
 args = parser.parse_args()
@@ -165,9 +168,9 @@ if __name__ == "__main__":
 
     task = args.task
     shop = args.shop
-    client = run_etl(shop)
 
     if task == "get_links":
+        client = run_etl(shop)
         utils.execute_query(engine, "TRUNCATE TABLE stg_urls;")
         client.refresh_links(engine, "stg_urls")
 
@@ -175,6 +178,7 @@ if __name__ == "__main__":
         utils.execute_query(engine, sql)
 
     elif task == "scrape":
+        client = run_etl(shop)
         utils.execute_query(engine, "TRUNCATE TABLE stg_pet_products;")
         client.run(engine, "stg_pet_products")
 
@@ -187,6 +191,10 @@ if __name__ == "__main__":
         sql = utils.get_sql_from_file(
             "insert_into_pet_product_variant_prices.sql")
         utils.execute_query(engine, sql)
+
+    elif task == "get_image":
+        pi = PetImage('./csv/pet_product_variant_urls.csv')
+        pi.extract(0.5, 1)  # Args (min_sec, max_sec)
 
     end_time = dt.datetime.now()
     duration = end_time - start_time

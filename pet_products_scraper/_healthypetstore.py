@@ -106,12 +106,14 @@ class HealthyPetStoreETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             if soup.find('form', class_="variations_form"):
                 for price_data in json.loads(soup.find('form', class_="variations_form").get('data-product_variations')):
                     variants.append(price_data['attributes'].get(
                         'attribute_pa_variations-sizes') or price_data['attributes'].get('attribute_pa_size'))
-
+                    image_urls.append(
+                        soup.find('meta', attrs={'property': "og:image"}).get('content'))
                     if price_data.get('display_price') != price_data.get('display_regular_price'):
                         price = float(price_data.get('display_regular_price'))
                         discounted_price = float(
@@ -129,7 +131,8 @@ class HealthyPetStoreETL(PetProductsETL):
 
             else:
                 variants.append(None)
-
+                image_urls.append(
+                    soup.find('meta', attrs={'property': "og:image"}).get('content'))
                 if soup.find('p', class_="price").find('del'):
                     price = float(soup.find('p', class_="price").find(
                         'del').find('bdi').get_text().replace('£', ''))
@@ -147,8 +150,13 @@ class HealthyPetStoreETL(PetProductsETL):
                     discounted_prices.append(None)
                     discount_percentages.append(None)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)
@@ -173,3 +181,12 @@ class HealthyPetStoreETL(PetProductsETL):
         df.insert(0, "shop", self.SHOP)
 
         return df
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

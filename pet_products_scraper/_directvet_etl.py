@@ -88,96 +88,104 @@ class DirectVetETL(PetProductsETL):
         return category_links
 
     def transform(self, soup: BeautifulSoup, url: str) -> pd.DataFrame:
-        product_name = soup.find('h1', itemprop="name").get_text()
-        product_url = url.replace(self.BASE_URL, "")
-        product_description = soup.find(
-            'div', id="short_description_content").get_text(strip=True)
-        product_rating = ''
+        try:
+            product_name = soup.find('h1', itemprop="name").get_text()
+            product_url = url.replace(self.BASE_URL, "")
+            product_description = soup.find(
+                'div', id="short_description_content").get_text(strip=True)
+            product_rating = ''
 
-        rating_wrapper = soup.find(
-            'div', id="product_comments_block_extra").find('div', 'star_content')
-        if (rating_wrapper):
-            rating_list_wrapper = soup.find('div', id="product_comments_block_tab").find_all(
-                'div', itemprop="reviewRating")
-            rate_list = [int(rating.find('meta', itemprop="ratingValue").get(
-                'content')) for rating in rating_list_wrapper]
+            rating_wrapper = soup.find(
+                'div', id="product_comments_block_extra").find('div', 'star_content')
+            if (rating_wrapper):
+                rating_list_wrapper = soup.find('div', id="product_comments_block_tab").find_all(
+                    'div', itemprop="reviewRating")
+                rate_list = [int(rating.find('meta', itemprop="ratingValue").get(
+                    'content')) for rating in rating_list_wrapper]
 
-            avg_rating = round(sum(rate_list) / len(rate_list), 2)
-            product_rating = f"{int(avg_rating) if avg_rating.is_integer() else avg_rating}/5"
-        else:
-            product_rating = '0/5'
+                avg_rating = round(sum(rate_list) / len(rate_list), 2)
+                product_rating = f"{int(avg_rating) if avg_rating.is_integer() else avg_rating}/5"
+            else:
+                product_rating = '0/5'
 
-        variant_wrapper = soup.find('table', id='ct_matrix')
-        variants = []
-        prices = []
-        discounted_prices = []
-        discount_percentages = []
+            variant_wrapper = soup.find('table', id='ct_matrix')
+            variants = []
+            prices = []
+            discounted_prices = []
+            discount_percentages = []
+            image_urls = []
 
-        if (variant_wrapper):
-            for variant in variant_wrapper.find('tbody').find_all('tr'):
+            if (variant_wrapper):
+                for variant in variant_wrapper.find('tbody').find_all('tr'):
+                    variant_info = ''
+                    if (variant.find('td', attrs={'data-label': "Select"})):
+                        variant_info = variant.find(
+                            'td', attrs={'data-label': "Select"}).get_text()
+                    elif (variant.find('td', attrs={'data-label': "Color"})):
+                        variant_info = variant.find(
+                            'td', attrs={'data-label': "Color"}).get_text()
+                    else:
+                        variant_info = variant.find(
+                            'td', attrs={'data-label': "Size"}).get_text()
+
+                    variants.append(variant_info)
+                    image_urls.append(soup.find('img', id="bigpic").get('src'))
+
+                    if (variant.find('td', attrs={'data-label': "Price"}).find('strike')):
+                        former_price = float(variant.find(
+                            'td', attrs={'data-label': "Price"}).find('strike').get_text().replace('£', ''))
+                        current_price = float(variant.find('td', attrs={'data-label': "Price"}).find(
+                            'strong', class_="strongprice").get_text().replace('£', ''))
+
+                        discounted_prices.append(former_price - current_price)
+                        discount_percentages.append(
+                            round(((former_price - current_price) / former_price) * 100, 2))
+                        prices.append(float(current_price))
+
+                    else:
+                        prices.append(float(variant.find(
+                            'td', attrs={'data-label': "Price"}).get_text().replace('£', '')))
+                        discounted_prices.append(None)
+                        discount_percentages.append(None)
+
+            else:
                 variant_info = ''
-                if (variant.find('td', attrs={'data-label': "Select"})):
-                    variant_info = variant.find(
-                        'td', attrs={'data-label': "Select"}).get_text()
-                elif (variant.find('td', attrs={'data-label': "Color"})):
-                    variant_info = variant.find(
-                        'td', attrs={'data-label': "Color"}).get_text()
-                else:
-                    variant_info = variant.find(
-                        'td', attrs={'data-label': "Size"}).get_text()
-
-                variants.append(variant_info)
-
-                if (variant.find('td', attrs={'data-label': "Price"}).find('strike')):
-                    former_price = float(variant.find(
-                        'td', attrs={'data-label': "Price"}).find('strike').get_text().replace('£', ''))
-                    current_price = float(variant.find('td', attrs={'data-label': "Price"}).find(
-                        'strong', class_="strongprice").get_text().replace('£', ''))
-
-                    discounted_prices.append(former_price - current_price)
-                    discount_percentages.append(
-                        round(((former_price - current_price) / former_price) * 100, 2))
-                    prices.append(float(current_price))
-
-                else:
-                    prices.append(float(variant.find(
-                        'td', attrs={'data-label': "Price"}).get_text().replace('£', '')))
-                    discounted_prices.append(None)
-                    discount_percentages.append(None)
-        else:
-            variant_info = ''
-
-            description_div = soup.find('div', id="short_description_content")
-
-            if description_div:
-                h2_tag = description_div.find('h2')
-                if h2_tag:
-                    variant_info = h2_tag.get_text(strip=True).replace(
-                        '- ', '').replace('-', '').strip()
-                else:
-                    p_tags = description_div.find_all('p')
-                    if p_tags:
-                        variant_info = p_tags[-1].get_text(strip=True).replace(
+                description_div = soup.find(
+                    'div', id="short_description_content")
+                if description_div:
+                    h2_tag = description_div.find('h2')
+                    if h2_tag:
+                        variant_info = h2_tag.get_text(strip=True).replace(
                             '- ', '').replace('-', '').strip()
                     else:
-                        variant_info = None
-            else:
-                variant_info = None
+                        p_tags = description_div.find_all('p')
+                        if p_tags:
+                            variant_info = p_tags[-1].get_text(strip=True).replace(
+                                '- ', '').replace('-', '').strip()
+                        else:
+                            variant_info = None
+                else:
+                    variant_info = None
 
-            variants.append(variant_info)
-            prices.append(
-                float(soup.find('span', itemprop="price").get_text().replace('£', '')))
-            discounted_prices.append(None)
-            discount_percentages.append(None)
+                variants.append(variant_info)
+                prices.append(
+                    float(soup.find('span', itemprop="price").get_text().replace('£', '')))
+                discounted_prices.append(None)
+                discount_percentages.append(None)
+                image_urls.append(soup.find('img', id="bigpic").get('src'))
 
-        df = pd.DataFrame({"variant": variants, "price": prices})
-        df.insert(0, "url", product_url)
-        df.insert(0, "description", product_description)
-        df.insert(0, "rating", product_rating)
-        df.insert(0, "name", product_name)
-        df.insert(0, "shop", self.SHOP)
+            df = pd.DataFrame({"variant": variants, "price": prices, "discounted_price": discounted_prices,
+                              "discount_percentage": discount_percentages, "image_urls": image_urls})
+            df.insert(0, "url", product_url)
+            df.insert(0, "description", product_description)
+            df.insert(0, "rating", product_rating)
+            df.insert(0, "name", product_name)
+            df.insert(0, "shop", self.SHOP)
 
-        return df
+            return df
+
+        except Exception as e:
+            logger.error(f"Error scraping {url}: {e}")
 
     def get_links(self, category: str) -> pd.DataFrame:
         current_url = f"{self.BASE_URL}/{category}"
@@ -208,3 +216,12 @@ class DirectVetETL(PetProductsETL):
 
     # def refresh_links(self, db_conn: Engine, table_name: str):
     #     pass
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('img', id="bigpic").get('src')
+        }

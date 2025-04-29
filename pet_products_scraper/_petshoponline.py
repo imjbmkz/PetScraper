@@ -108,6 +108,7 @@ class PetShopOnlineETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             headers = {
                 "User-Agent": UserAgent().random,
@@ -118,6 +119,8 @@ class PetShopOnlineETL(PetProductsETL):
 
             for variant_info in product_info.json()['product']["variants"]:
                 variants.append(variant_info.get('title'))
+                image_urls.append(
+                    soup.find('meta', attrs={'property': "og:image"}).get('content'))
 
                 if (variant_info.get('compare_at_price') != ""):
                     price = float(variant_info.get('compare_at_price'))
@@ -134,8 +137,13 @@ class PetShopOnlineETL(PetProductsETL):
                     discounted_prices.append(None)
                     discount_percentages.append(None)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)
@@ -146,3 +154,12 @@ class PetShopOnlineETL(PetProductsETL):
 
         except Exception as e:
             logger.error(f"Error scraping {url}: {e}")
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

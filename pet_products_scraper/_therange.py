@@ -20,9 +20,16 @@ from tenacity import (
 )
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
+from fake_useragent import UserAgent
+
+import asyncio
+import nest_asyncio
+from playwright.async_api import async_playwright
+nest_asyncio.apply()
+
 MAX_RETRIES = 10
-MAX_WAIT_BETWEEN_REQ = 2
-MIN_WAIT_BETWEEN_REQ = 1
+MAX_WAIT_BETWEEN_REQ = 5
+MIN_WAIT_BETWEEN_REQ = 2
 REQUEST_TIMEOUT = 30
 
 
@@ -74,45 +81,153 @@ class TheRangeETL(PetProductsETL):
             "/best-sellers/pets/"
         ]
 
-    def setup_cloudscraper(self):
-        scraper = cloudscraper.create_scraper(
-            browser={"browser": random.choice(["firefox", 'chrome']), "platform": "windows", "mobile": False})
-        scraper.headers.update({"User-Agent": UserAgent().random})
-        scraper.headers.update({"Referer": "https://www.therange.co.uk"})
-        return scraper
+    @retry(
+        wait=wait_random(min=MIN_WAIT_BETWEEN_REQ, max=MAX_WAIT_BETWEEN_REQ),
+        stop=stop_after_attempt(MAX_RETRIES),
+        retry=retry_if_exception_type(requests.RequestException),
+        before_sleep=before_sleep_log(logger, "WARNING"),
+        reraise=True,
+    )
+    async def extract_scrape_content(self, url, selector):
+        soup = None
+        browser = None
+        try:
+            async with async_playwright() as p:
+                browser_args = {
+                    "headless": True,
+                    "args": ["--disable-blink-features=AutomationControlled"]
+                }
+
+                browser = await p.chromium.launch(**browser_args)
+                context = await browser.new_context(
+                    user_agent=UserAgent().random,
+                    locale="en-US"
+                )
+
+                page = await context.new_page()
+                await page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+                await page.set_extra_http_headers({
+                    "User-Agent": UserAgent().random,
+                    "Accept": 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Encoding': 'gzip, deflate, br, zstd',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Cache-Control': 'max-age=0',
+                    'Cookie': 'si=13-680dd27df36ef2.48880053; __cf_bm=nH2EM6Wj98NrLgphO4oGZY0uuAAQ0jFTghQSaABw4Kg-1745744871-1.0.1.1-ivbSDo3.HsS._KOy1bacHm0EvITTQPwod7nNJ4DowG29X3fYW6mushmLko3M9Equ_6VRwyHAwFxbUyLPxyMKcaCarAMwYj8Sl0LN1FhF7sKKNDn2dyGLSTYqx76qKCWA; cf_clearance=yt_ZhnivZ0n5RHFYO1zmvD6hzFyyP_NOXjkgv1AgCAY-1745744881-1.2.1.1-Tsszn2GM92T.7Gxsm_GfbB1UE_x36Zw3c_Czoey5EyBxtTLDf.MpnOzb2yk2YES9SP9BxKPJeK2.HMCg60yX6KyTWMomUBPMZIzFmIDm6tfmErQDGJl4obN08p7nKZGrpqI3NCg9VOF_K8J5VpTjdxuFcrqU3NXNw4PQOb2F07SAMMdY7E8.XNZj524ibaAizlzU6X8.TGEwPFT8u14Iimrh8X9i261J4GSCNi8DWJqsl_P96gSljqFU_wdxvTdw8tRSOTo__zsSH1ReZGduVklVmgnkqoTyMnYE9HkzSE9dZymTcik7fjr3XjH0aXhEpTVafjtJ5KHLjDAJZXK.B75gai2eMkKDiLGpADk5LKvqI.ENAZOvOn.qCu6T.FYY',
+                    'Referer': 'https://www.google.com/',
+                    'Priority': "u=0, i",
+                    "Upgrade-Insecure-Requests": "1",
+                    "Connection": "keep-alive",
+                    "Sec-Ch-Ua": "\"Not(A:Brand\";v=\"99\", \"Opera GX\";v=\"118\", \"Chromium\";v=\"133\"",
+                    "Sec-Ch-Ua-Mobile": "?0",
+                    "Sec-Ch-Ua-Platform": "\"Windows\"",
+                    "Sec-Fetch-Dest": "document",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Site": "same-origin",
+                    "Sec-Fetch-User": "?1"
+                })
+
+                await asyncio.sleep(random.uniform(MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ))
+                await page.goto(url, wait_until="domcontentloaded")
+                await page.wait_for_selector(selector, timeout=30000)
+
+                for _ in range(random.randint(3, 6)):
+                    await page.mouse.wheel(0, random.randint(300, 700))
+                    await asyncio.sleep(random.uniform(0.5, 1))
+
+                for _ in range(random.randint(5, 10)):
+                    await page.mouse.move(random.randint(0, 800), random.randint(0, 600))
+                    await asyncio.sleep(random.uniform(0.5, 1))
+
+                rendered_html = await page.content()
+                logger.info(
+                    f"Successfully extracted data from {url}"
+                )
+                sleep_time = random.uniform(
+                    MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
+                logger.info(f"Sleeping for {sleep_time} seconds...")
+                soup = BeautifulSoup(rendered_html, "html.parser")
+                return soup
+
+        except Exception as e:
+            logger.error(f"An error occurred: {e}")
+
+        finally:
+            if browser:
+                await browser.close()
 
     @retry(
         wait=wait_random(min=MIN_WAIT_BETWEEN_REQ, max=MAX_WAIT_BETWEEN_REQ),
         stop=stop_after_attempt(MAX_RETRIES),
-        retry=retry_if_exception_type(
-            (requests.RequestException, requests.HTTPError, requests.exceptions.HTTPError)),
+        retry=retry_if_exception_type(requests.RequestException),
         before_sleep=before_sleep_log(logger, "WARNING"),
         reraise=True,
     )
-    def fetch_page(self, url: str) -> BeautifulSoup:
+    async def get_json_product(self, url):
+        browser = None
         try:
-            logger.info(f"[INFO] Fetching: {url}")
-            response = self.setup_cloudscraper().get(url, timeout=REQUEST_TIMEOUT)
+            async with async_playwright() as p:
+                browser_args = {
+                    "headless": True,
+                    "args": ["--disable-blink-features=AutomationControlled"]
+                }
 
-            # ✅ Check Cloudflare Response
-            if response.status_code == 403:
-                logger.warning(
-                    f"[WARNING] Cloudflare blocked the request! Retrying...")
-                raise requests.RequestException(
-                    "Cloudflare protection triggered.")
+                browser = await p.chromium.launch(**browser_args)
+                context = await browser.new_context(locale="en-US")
 
-            response.raise_for_status()
+                page = await context.new_page()
+                await page.set_extra_http_headers({
+                    "User-Agent": UserAgent().random,
+                    "Accept": 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Encoding': 'gzip, deflate, br, zstd',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Cache-Control': 'max-age=0',
+                    'Referer': 'https://www.google.com/',
+                    'Priority': "u=0, i",
+                    "Upgrade-Insecure-Requests": "1",
+                    "Connection": "keep-alive",
+                    "Sec-Ch-Ua": "\"Not(A:Brand\";v=\"99\", \"Opera GX\";v=\"118\", \"Chromium\";v=\"133\"",
+                    "Sec-Ch-Ua-Mobile": "?0",
+                    "Sec-Ch-Ua-Platform": "\"Windows\"",
+                    "Sec-Fetch-Dest": "document",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Site": "same-origin",
+                    "Sec-Fetch-User": "?1"
+                })
 
-            logger.info(
-                f"Successfully extracted data from {url} {response.status_code}"
-            )
-            sleep_time = random.uniform(
-                MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
-            logger.info(f"Sleeping for {sleep_time} seconds...")
-            return BeautifulSoup(response.content, "html.parser")
+                await page.goto(url, wait_until="domcontentloaded")
 
-        except requests.RequestException as e:
-            logger.error(f"[ERROR] Failed to fetch {url}: {e}")
+                output = await page.content()
+                logger.info(
+                    f"Successfully extracted data from {url}"
+                )
+                sleep_time = random.uniform(
+                    MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
+                logger.info(f"Sleeping for {sleep_time} seconds...")
+                soup = BeautifulSoup(output, 'html.parser')
+                pre_tag = soup.find('pre')
+
+                if pre_tag:
+                    json_text = pre_tag.get_text()
+                    output = json.loads(json_text)
+                    logger.info(f"Successfully extracted JSON data from {url}")
+
+                    # Sleep between requests
+                    sleep_time = random.uniform(
+                        MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
+                    logger.info(f"Sleeping for {sleep_time} seconds...")
+
+                    return output
+                else:
+                    logger.error(f"No <pre> tag found at {url}")
+                    return None
+
+        except Exception as e:
+            logger.error(f"An error occurred: {e}")
+
+        finally:
+            if browser:
+                await browser.close()
 
     def transform(self, soup: BeautifulSoup, url: str) -> pd.DataFrame:
         try:
@@ -124,12 +239,9 @@ class TheRangeETL(PetProductsETL):
             product_id = soup.find('input', id="product_id").get('value')
             clean_url = url.split('#')[0]
 
-            review_container = self.setup_cloudscraper().get(
-                f'{clean_url}?action=loadreviews&pid={product_id}&page=1', timeout=REQUEST_TIMEOUT)
-            review_container.raise_for_status()
-            if review_container.status_code == 200:
-                product_rating_soup = BeautifulSoup(
-                    review_container.content, "html.parser")
+            if not soup.find('div', class_="no_reviews_info"):
+                product_rating_soup = asyncio.run(self.extract_scrape_content(
+                    f'{clean_url}?action=loadreviews&pid={product_id}&page=1', '#review-product-summary'))
 
                 if product_rating_soup.find('div', id="review-product-summary"):
                     product_rating = str(round((int(product_rating_soup.find('div', id="review-product-summary").findAll(
@@ -139,45 +251,53 @@ class TheRangeETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
-            product_details = self.setup_cloudscraper().get(
-                f'{clean_url}?json')
-            product_details.raise_for_status()
-            if product_details.status_code == 200:
-                if len(product_details.json()['variant_arr']) > 1:
-                    for var_details in product_details.json()['variant_arr']:
-                        if " - " in var_details['name']:
-                            variants.append(
-                                var_details['name'].split(" - ")[1])
+            product_details = asyncio.run(
+                self.get_json_product(f'{clean_url}?json'))
+            if len(product_details['variant_arr']) > 1:
+                for var_details in product_details['variant_arr']:
+                    if " - " in var_details['name']:
+                        variants.append(var_details['name'].split(" - ")[1])
 
-                        if var_details['price_was'] == None:
-                            prices.append(var_details['price'] / 100)
-                            discounted_prices.append(None)
-                            discount_percentages.append(None)
-                        else:
-                            prices.append(var_details['price_was'] / 100)
-                            discounted_prices.append(
-                                var_details['price'] / 100)
-                            discount_percentages.append(
-                                var_details['price_was_percent'] / 100)
-
-                else:
-                    variants.append(None)
-                    if product_details.json()['variant_arr'][0]['price_was'] == None:
-                        prices.append(product_details.json()[
-                                      'variant_arr'][0]['price'] / 100)
+                    if var_details['price_was'] == None:
+                        prices.append(var_details['price'] / 100)
                         discounted_prices.append(None)
                         discount_percentages.append(None)
-                    else:
-                        prices.append(product_details.json()[
-                                      'variant_arr'][0]['price_was'] / 100)
-                        discounted_prices.append(product_details.json()[
-                                                 'variant_arr'][0]['price'] / 100)
-                        discount_percentages.append(product_details.json(
-                        )['variant_arr'][0]['price_was_percent'] / 100)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                              "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+                    else:
+                        prices.append(var_details['price_was'] / 100)
+                        discounted_prices.append(var_details['price'] / 100)
+                        discount_percentages.append(
+                            var_details['price_was_percent'] / 100)
+
+                    image_urls.append(
+                        soup.find('meta', attrs={'property': "og:image"}).get('content'))
+
+            else:
+                variants.append(None)
+                image_urls.append(
+                    soup.find('meta', attrs={'property': "og:image"}).get('content'))
+                if product_details['variant_arr'][0]['price_was'] == None:
+                    prices.append(
+                        product_details['variant_arr'][0]['price'] / 100)
+                    discounted_prices.append(None)
+                    discount_percentages.append(None)
+                else:
+                    prices.append(
+                        product_details['variant_arr'][0]['price_was'] / 100)
+                    discounted_prices.append(
+                        product_details['variant_arr'][0]['price'] / 100)
+                    discount_percentages.append(
+                        product_details['variant_arr'][0]['price_was_percent'] / 100)
+
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)
@@ -197,13 +317,14 @@ class TheRangeETL(PetProductsETL):
         try:
             category_link = f"{self.BASE_URL}{category}"
             urls = []
-            soup = self.fetch_page(category_link)
+            soup = asyncio.run(
+                self.extract_scrape_content(category_link,  '#root'))
 
             category_id = soup.find('div', id="root")['data-page-id']
             total_product = soup.find('div', id="root")['data-total-results']
 
-            product_list = self.setup_cloudscraper().get(
-                f'https://search.therange.co.uk/api/productlist?categoryId={category_id}&sort=relevance&limit={total_product}&filters=%7B"in_stock_f"%3A%5B"true"%5D%7D', timeout=REQUEST_TIMEOUT)
+            product_list = self.session.request(method="GET",
+                                                url=f'https://search.therange.co.uk/api/productlist?categoryId={category_id}&sort=relevance&limit={total_product}&filters=%7B"in_stock_f"%3A%5B"true"%5D%7D', timeout=REQUEST_TIMEOUT)
             product_list.raise_for_status()
             if product_list.status_code == 200:
                 for url in product_list.json()['products']:
@@ -243,7 +364,8 @@ class TheRangeETL(PetProductsETL):
 
             now = dt.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            soup = self.fetch_page(url)
+            soup = asyncio.run(self.extract_scrape_content(
+                url,  '#variant_container'))
             df = self.transform(soup, url)
 
             if df is not None:
@@ -252,3 +374,13 @@ class TheRangeETL(PetProductsETL):
 
             else:
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
+
+    def image_scrape_product(self, url):
+        soup = asyncio.run(self.extract_scrape_content(
+            url, '#variant_container'))
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }

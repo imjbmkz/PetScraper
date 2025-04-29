@@ -260,7 +260,6 @@ class FarmAndPetPlaceETL(PetProductsETL):
             '/shop/products/pet/bird/nesting/page-1.html',
             '/shop/products/pet/bird/sand-sheets-and-grits/page-1.html',
             '/shop/products/pet/bird/feeders-and-drinkers/page-1.html',
-            '/shop/products/pet/bird/bird-cages-and-stands/page-1.html',
             '/shop/products/pet/bird/perches/page-1.html',
             '/shop/products/pet/bird/toys-for-birds/page-1.html',
             '/shop/products/pet/bird/medication-and-health-for-birds/hygiene-for-birds/page-1.html',
@@ -411,10 +410,13 @@ class FarmAndPetPlaceETL(PetProductsETL):
             prices = []
             discounted_prices = []
             discount_percentages = []
+            image_urls = []
 
             if soup.find('select', id="attribute"):
                 variants.append(soup.find('select', id="attribute").find_all(
                     'option')[0].get('value'))
+                image_urls.append(
+                    soup.find('img', class_="attachment-shop_single").get('src'))
                 if soup.find('div', class_="price").find('span', class_="rrp"):
                     price = float(soup.find('div', class_="price").find(
                         'span', class_="rrp").find('strong').get_text().replace('£', ''))
@@ -435,6 +437,8 @@ class FarmAndPetPlaceETL(PetProductsETL):
 
             else:
                 variants.append(None)
+                image_urls.append(
+                    soup.find('img', class_="attachment-shop_single").get('src'))
                 if soup.find('div', class_="price").find('span', class_="rrp"):
                     price = float(soup.find('div', class_="price").find(
                         'span', class_="rrp").find('strong').get_text().replace('£', ''))
@@ -453,8 +457,13 @@ class FarmAndPetPlaceETL(PetProductsETL):
                     discounted_prices.append(None)
                     discount_percentages.append(None)
 
-            df = pd.DataFrame({"variant": variants, "price": prices,
-                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages})
+            df = pd.DataFrame({
+                "variant": variants,
+                "price": prices,
+                "discounted_price": discounted_prices,
+                "discount_percentage": discount_percentages,
+                "image_urls": image_urls
+            })
             df.insert(0, "url", product_url)
             df.insert(0, "description", product_description)
             df.insert(0, "rating", product_rating)
@@ -492,3 +501,12 @@ class FarmAndPetPlaceETL(PetProductsETL):
         df = pd.DataFrame({"url": urls})
         df.insert(0, "shop", self.SHOP)
         return df
+
+    def image_scrape_product(self, url):
+        soup = self.extract_from_url("GET", url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('img', class_="attachment-shop_single").get('src')
+        }

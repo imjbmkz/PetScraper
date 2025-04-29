@@ -109,55 +109,61 @@ class ViovetETL(PetProductsETL):
 
     def transform(self, soup: BeautifulSoup, url: str):
         try:
+            product_name = soup.select_one(
+                'h1[id="product_family_heading"]').get_text()
+            product_url = url.replace(self.BASE_URL, "")
 
-            if soup:
+            product_description_wrapper = soup.select_one(
+                'div[itemprop="description"]').find('div').find_all('p')
+            description_text = [para.get_text()
+                                for para in product_description_wrapper]
+            product_description = ' '.join(description_text)
 
-                product_name = soup.select_one(
-                    'h1[id="product_family_heading"]').get_text()
-                product_url = url.replace(self.BASE_URL, "")
+            rating_average = ''
+            if (soup.find('span', itemprop="ratingValue") == None):
+                rating_average = '0/5'
+            else:
+                rating_average = soup.select_one(
+                    'span[itemprop="ratingValue"]').get_text() + '/5'
 
-                product_description_wrapper = soup.select_one(
-                    'div[itemprop="description"]').find('div').find_all('p')
-                description_text = [para.get_text()
-                                    for para in product_description_wrapper]
-                product_description = ' '.join(description_text)
+            variants_wrapper = soup.find_all('li', 'product-select-item')
 
-                rating_average = ''
-                if (soup.find('span', itemprop="ratingValue") == None):
-                    rating_average = '0/5'
-                else:
-                    rating_average = soup.select_one(
-                        'span[itemprop="ratingValue"]').get_text() + '/5'
+            variants = []
+            prices = []
+            discounted_prices = []
+            discount_percentages = []
+            image_urls = []
 
-                variants_wrapper = soup.find_all('li', 'product-select-item')
+            for variant in variants_wrapper:
+                name_span = variant.find('span', 'name')
+                clearance_label = name_span.find(
+                    'span', 'clearance_product_label')
+                if clearance_label:
+                    clearance_label.extract()
 
-                variants = []
-                prices = []
-                discounted_prices = []
-                discount_percentages = []
+                name_variant = name_span.get_text(strip=True)
+                price_variant = float(variant.find(
+                    'span', 'price').get_text(strip=True).replace("£", ""))
 
-                for variant in variants_wrapper:
-                    name_span = variant.find('span', 'name')
-                    clearance_label = name_span.find(
-                        'span', 'clearance_product_label')
-                    if clearance_label:
-                        clearance_label.extract()
+                variants.append(name_variant)
+                prices.append(price_variant)
+                discounted_prices.append(None)
+                discount_percentages.append(None)
+                image_urls.append(', '.join([
+                    'https' + (src if src else data_src)
+                    for img in soup.find_all('div', class_="swiper-slide")
+                    if (img_tag := img.find('img')) and ((src := img_tag.get('src')) or (data_src := img_tag.get('data-src')))
+                ]))
 
-                    name_variant = name_span.get_text(strip=True)
-                    price_variant = float(variant.find(
-                        'span', 'price').get_text(strip=True).replace("£", ""))
+            df = pd.DataFrame({"variant": variants, "price": prices,
+                               "discounted_price": discounted_prices, "discount_percentage": discount_percentages, "image_urls": image_urls})
+            df.insert(0, "url", product_url)
+            df.insert(0, "description", product_description)
+            df.insert(0, "rating", rating_average)
+            df.insert(0, "name", product_name)
+            df.insert(0, "shop", self.SHOP)
 
-                    variants.append(name_variant)
-                    prices.append(price_variant)
-
-                df = pd.DataFrame({"variant": variants, "price": prices})
-                df.insert(0, "url", product_url)
-                df.insert(0, "description", product_description)
-                df.insert(0, "rating", rating_average)
-                df.insert(0, "name", product_name)
-                df.insert(0, "shop", self.SHOP)
-
-                return df
+            return df
 
         except Exception as e:
             logger.error(f"Error scraping {url}: {e}")
@@ -236,3 +242,12 @@ class ViovetETL(PetProductsETL):
 
         sql = get_sql_from_file("insert_into_urls.sql")
         execute_query(db_conn, sql)
+
+    def image_scrape_product(self, url):
+        soup = self.fetch_page(url)
+
+        return {
+            'shop': self.SHOP,
+            'url': url,
+            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+        }
