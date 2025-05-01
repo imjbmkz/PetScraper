@@ -7,7 +7,7 @@ import pandas as pd
 from datetime import datetime as dt
 from loguru import logger
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 from fake_useragent import UserAgent
@@ -119,17 +119,28 @@ class PetsCornerETL(PetProductsETL):
 
                 browser = await p.chromium.launch(**browser_args)
                 context = await browser.new_context(
-                    user_agent=UserAgent().random,
                     locale="en-US"
                 )
 
                 page = await context.new_page()
 
                 await page.set_extra_http_headers({
+                    "Accept": 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Encoding': 'gzip, deflate, br, zstd',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Cache-Control': 'max-age=0',
                     "User-Agent": UserAgent().random,
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Origin": "https://www.ocado.com",
-                    "Referer": url,
+                    'Referer': 'https://www.google.com/',
+                    'Priority': "u=0, i",
+                    "Upgrade-Insecure-Requests": "1",
+                    "Connection": "keep-alive",
+                    "Sec-Ch-Ua": "\"Not(A:Brand\";v=\"99\", \"Opera GX\";v=\"118\", \"Chromium\";v=\"133\"",
+                    "Sec-Ch-Ua-Mobile": "?0",
+                    "Sec-Ch-Ua-Platform": "\"Windows\"",
+                    "Sec-Fetch-Dest": "document",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Site": "same-origin",
+                    "Sec-Fetch-User": "?1"
                 })
 
                 await page.goto(url, wait_until="domcontentloaded")
@@ -298,9 +309,26 @@ class PetsCornerETL(PetProductsETL):
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
 
     def image_scrape_product(self, url):
-        soup = asyncio.run(self.extract_scrape_content(
-            url, '#ctl00_Content_zneContent6_ctl05_ctl02'))
-
+        # soup = asyncio.run(self.extract_scrape_content(url, '#content'))
+        headers = {
+            "Accept": 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'max-age=0',
+            "User-Agent": UserAgent().random,
+            'Referer': 'https://www.google.com/',
+            'Priority': "u=0, i",
+            "Upgrade-Insecure-Requests": "1",
+            "Connection": "keep-alive",
+            "Sec-Ch-Ua": "\"Not(A:Brand\";v=\"99\", \"Opera GX\";v=\"118\", \"Chromium\";v=\"133\"",
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": "\"Windows\"",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1"
+        }
+        soup = self.extract_from_url("GET", url, headers=headers)
         return {
             'shop': self.SHOP,
             'url': url,

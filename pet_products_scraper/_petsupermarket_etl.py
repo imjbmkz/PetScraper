@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime as dt
 from loguru import logger
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 from tenacity import (
@@ -69,12 +69,20 @@ class PetSupermarketETL(PetProductsETL):
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                     "Accept-Language": "en-US,en;q=0.9",
                     "Upgrade-Insecure-Requests": "1",
-                    "Referer": url,
+                    "Connection": "keep-alive",
+                    "Sec-Ch-Ua": "\"Not(A:Brand\";v=\"99\", \"Opera GX\";v=\"118\", \"Chromium\";v=\"133\"",
+                    "Sec-Ch-Ua-Mobile": "?0",
+                    "Sec-Ch-Ua-Platform": "\"Windows\"",
+                    "Sec-Fetch-Dest": "document",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Site": "same-origin",
+                    "Sec-Fetch-User": "?1",
+                    'Referer': 'https://www.google.com/',
                 })
 
                 await asyncio.sleep(random.uniform(MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ))
                 await page.goto(url, wait_until="domcontentloaded")
-                await page.wait_for_selector(selector, timeout=30000)
+                await page.wait_for_selector(selector, timeout=300000)
 
                 for _ in range(random.randint(3, 6)):
                     await page.mouse.wheel(0, random.randint(300, 700))
@@ -235,10 +243,10 @@ class PetSupermarketETL(PetProductsETL):
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
 
     def image_scrape_product(self, url):
-        soup = asyncio.run(self.extract_scrape_content(url, '#feedbackButton'))
+        soup = self.extract_from_url("GET", url)
 
         return {
             'shop': self.SHOP,
             'url': url,
-            'image_urls': ', '.join([img.get('src') for img in soup.find_all('div', attrs={'data-test': 'carousel-inner-wrapper'})[0].find_all('img')])
+            'image_urls': soup.find('meta', attrs={'name': "sailthru.image.full"}).get('content')
         }

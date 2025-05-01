@@ -4,7 +4,6 @@ import pandas as pd
 from datetime import datetime
 from loguru import logger
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
@@ -268,5 +267,5 @@ class ThePetExpressETL(PetProductsETL):
         return {
             'shop': self.SHOP,
             'url': url,
-            'image_urls': soup.find('meta', attrs={'property': "og:image"}).get('content')
+            'image_urls': soup.find('div', class_="main_image").find('img').get('src')
         }

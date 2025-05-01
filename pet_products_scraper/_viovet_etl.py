@@ -6,7 +6,7 @@ import math
 from datetime import datetime as dt
 from loguru import logger
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from ._pet_products_etl import PetProductsETL
 from loguru import logger
 from tenacity import (

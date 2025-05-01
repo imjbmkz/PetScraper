@@ -37,16 +37,16 @@ from pet_products_scraper import (
 )
 
 factory = {
-    "Zooplus": ZooplusETL(),
+    "Zooplus": ZooplusETL(),  # Scrape Later
     "PetsAtHome": PetsAtHomeETL(),
     "Jollyes": JollyesETL(),
     "LilysKitchen": LilysKitchenETL(),
-    "Bitiba": BitibaETL(),
+    "Bitiba": BitibaETL(),  # Scrape Later
     "PetSupermarket": PetSupermarketETL(),
     "PetPlanet": PetPlanetETL(),
     "Purina": PurinaETL(),
     "DirectVet": DirectVetETL(),
-    "FishKeeper": FishKeeperETL(),
+    "Fishkeeper": FishKeeperETL(),
     "PetDrugsOnline": PetDrugsOnlineETL(),
     "Viovet": ViovetETL(),
     "PetShop": PetShopETL(),
@@ -54,7 +54,7 @@ factory = {
     "VetUK": VetUKETL(),
     "BurnsPet": BurnsPetETL(),
     "ASDAGroceries": AsdaETL(),
-    "TheRange": TheRangeETL(),
+    "TheRange": TheRangeETL(),  # Scrape Later
     "Ocado": OcadoETL(),
     "Harringtons": HarringtonsETL(),
     "BernPetFoods": BernPetFoodsETL(),
@@ -104,20 +104,20 @@ class PetImage():
                         scrape_payload.append(scrape_df)
                         i += 1
 
-                    logger.info(f"Scraped {i} out of {len(scrape_links)}")
-                    if c in hard_scrape_companies:
-                        sleep_time = random.uniform(60, 120)
-                        logger.info(
-                            f"Sleeping for {sleep_time:.2f} seconds...")
-                        time.sleep(sleep_time)
-                    else:
-                        sleep_time = random.uniform(min_sec, max_sec)
-                        logger.info(
-                            f"Sleeping for {sleep_time:.2f} seconds...")
-                        time.sleep(sleep_time)
-
                 except Exception as e:
                     logger.error(f"Error scraping {link}: {e}")
+
+                logger.info(f"Scraped {i} out of {len(scrape_links)}")
+                if c in hard_scrape_companies:
+                    sleep_time = random.uniform(60, 120)
+                    logger.info(
+                        f"Sleeping for {sleep_time:.2f} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    sleep_time = random.uniform(min_sec, max_sec)
+                    logger.info(
+                        f"Sleeping for {sleep_time:.2f} seconds...")
+                    time.sleep(sleep_time)
 
             self.transform(c, scrape_payload)
 
@@ -129,6 +129,7 @@ class PetImage():
                                      left_on="full_url", right_on="url")
 
         df_merge = df_merge.rename(columns={'url_x': 'url'})
+        logger.info(f"Load scraped data into CSV...")
         self.load(
             df_merge[['id', 'shop', 'base_url', 'url', 'variant', 'image_urls']], company)
 

@@ -8,7 +8,7 @@ import pandas as pd
 from datetime import datetime as dt
 from loguru import logger
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from ._pet_products_etl import PetProductsETL
 from fake_useragent import UserAgent
 from tenacity import (
@@ -29,7 +29,7 @@ nest_asyncio.apply()
 
 MAX_RETRIES = 10
 MAX_WAIT_BETWEEN_REQ = 5
-MIN_WAIT_BETWEEN_REQ = 2
+MIN_WAIT_BETWEEN_REQ = 3
 REQUEST_TIMEOUT = 30
 
 

@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime as dt
 from abc import ABC, abstractmethod
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from loguru import logger
 import undetected_chromedriver as uc
 from tenacity import (

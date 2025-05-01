@@ -9,7 +9,7 @@ from os import getenv
 from datetime import datetime
 from loguru import logger
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
@@ -244,7 +244,7 @@ class FishKeeperETL(PetProductsETL):
         return df
 
     def image_scrape_product(self, url):
-        soup = asyncio.run(self.product_list_scroll(url, '#maincontent'))
+        soup = self.extract_from_url("GET", url)
 
         return {
             'shop': self.SHOP,

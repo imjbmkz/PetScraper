@@ -4,7 +4,7 @@ import undetected_chromedriver as uc
 from datetime import datetime
 from loguru import logger
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from selenium.webdriver.common.by import By
 
 from ._pet_products_etl import PetProductsETL

@@ -1,11 +1,3 @@
-"""
-Step 1: Make sure that you have a MySQL database running. Update the .env file as needed.
-Step 2: Activate virtual environment. 
-Step 3: Run get_links task: `python main.py get_links -s Zooplus`
-Step 3: Run scrape task: `python main.py scrape -s Zooplus`
-"""
-
-
 import os
 import sys
 import argparse
@@ -194,7 +186,7 @@ if __name__ == "__main__":
 
     elif task == "get_image":
         pi = PetImage('./csv/pet_product_variant_urls.csv')
-        pi.extract(0.5, 1)  # Args (min_sec, max_sec)
+        pi.extract(3, 5)  # Args (min_sec, max_sec)
 
     end_time = dt.datetime.now()
     duration = end_time - start_time

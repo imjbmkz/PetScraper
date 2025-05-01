@@ -7,7 +7,7 @@ from datetime import datetime as dt
 from loguru import logger
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 from tenacity import (

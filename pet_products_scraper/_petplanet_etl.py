@@ -1,15 +1,35 @@
+from playwright.async_api import async_playwright
+import nest_asyncio
+import asyncio
+import requests
+import random
+from fake_useragent import UserAgent
 import re
 import pandas as pd
 import warnings
 from datetime import datetime as dt
 from loguru import logger
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
-
+from sqlalchemy.engine import Engine
+from tenacity import (
+    before_sleep_log,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_random,
+)
 from ._pet_products_etl import PetProductsETL
 from .utils import execute_query, update_url_scrape_status, get_sql_from_file
 
 warnings.filterwarnings('ignore')
+
+
+nest_asyncio.apply()
+
+MAX_RETRIES = 10
+MAX_WAIT_BETWEEN_REQ = 2
+MIN_WAIT_BETWEEN_REQ = 1
+REQUEST_TIMEOUT = 30
 
 
 class PetPlanetETL(PetProductsETL):
@@ -26,6 +46,81 @@ class PetPlanetETL(PetProductsETL):
             "/d298/other_small_furries",
             "/d2709/pet_health"
         ]
+
+    @retry(
+        wait=wait_random(min=MIN_WAIT_BETWEEN_REQ,
+                         max=MAX_WAIT_BETWEEN_REQ),
+        stop=stop_after_attempt(MAX_RETRIES),
+        retry=retry_if_exception_type(requests.RequestException),
+        before_sleep=before_sleep_log(logger, "WARNING"),
+        reraise=True,
+    )
+    async def extract_scrape_content(self, url, selector):
+        soup = None
+        browser = None
+        try:
+            async with async_playwright() as p:
+                browser_args = {
+                    "headless": True,
+                    "args": ["--disable-blink-features=AutomationControlled"]
+                }
+
+                browser = await p.chromium.launch(**browser_args)
+                context = await browser.new_context(
+                    user_agent=UserAgent().random,
+                    locale="en-US"
+                )
+
+                page = await context.new_page()
+                await page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+                await page.set_extra_http_headers({
+                    "User-Agent": UserAgent().random,
+                    "Accept": 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Encoding': 'gzip, deflate, br, zstd',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Cache-Control': 'max-age=0',
+                    'Referer': 'https://www.google.com/',
+                    'Priority': "u=0, i",
+                    "Upgrade-Insecure-Requests": "1",
+                    "Connection": "keep-alive",
+                    "Sec-Ch-Ua": "\"Not(A:Brand\";v=\"99\", \"Opera GX\";v=\"118\", \"Chromium\";v=\"133\"",
+                    "Sec-Ch-Ua-Mobile": "?0",
+                    "Sec-Ch-Ua-Platform": "\"Windows\"",
+                    "Sec-Fetch-Dest": "document",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Site": "same-origin",
+                    "Sec-Fetch-User": "?1"
+                })
+
+                await asyncio.sleep(random.uniform(MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ))
+                await page.goto(url, wait_until="domcontentloaded")
+                await page.wait_for_selector(selector, timeout=30000)
+
+                for _ in range(random.randint(3, 6)):
+                    await page.mouse.wheel(0, random.randint(300, 700))
+                    await asyncio.sleep(random.uniform(0.5, 1))
+
+                for _ in range(random.randint(5, 10)):
+                    await page.mouse.move(random.randint(0, 800), random.randint(0, 600))
+                    await asyncio.sleep(random.uniform(0.5, 1))
+
+                rendered_html = await page.content()
+                logger.info(
+                    f"Successfully extracted data from {url}"
+                )
+                sleep_time = random.uniform(
+                    MIN_WAIT_BETWEEN_REQ, MAX_WAIT_BETWEEN_REQ)
+                logger.info(f"Sleeping for {sleep_time} seconds...")
+                soup = BeautifulSoup(rendered_html, "html.parser")
+                return soup
+
+        except Exception as e:
+            logger.error(f"An error occurred: {e}")
+
+        finally:
+            if browser:
+                await browser.close()
 
     def transform(self, soup: BeautifulSoup, url: str):
         try:
@@ -264,10 +359,11 @@ class PetPlanetETL(PetProductsETL):
                 update_url_scrape_status(db_conn, pkey, "FAILED", now)
 
     def image_scrape_product(self, url):
-        soup = self.extract_from_url("GET", url,  verify=False)
+        soup = asyncio.run(self.extract_scrape_content(
+            url, '.site-wrapper'))
 
         return {
             'shop': self.SHOP,
             'url': url,
-            'image_urls': ', '.join([img.get('src') for img in soup.find('div', class_="product-gallery-control").find_all('img')])
+            'image_urls': soup.find('div', class_="product-gallery-slider").find('img').get('src')
         }

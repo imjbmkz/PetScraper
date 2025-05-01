@@ -7,7 +7,7 @@ import pandas as pd
 from datetime import datetime as dt
 from loguru import logger
 from bs4 import BeautifulSoup
-from sqlalchemy import Engine
+from sqlalchemy.engine import Engine
 from ._pet_products_etl import PetProductsETL
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random
 
